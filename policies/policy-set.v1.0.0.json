@@ -1,0 +1,97 @@
+{
+  "version": "1.0.0",
+  "description": "Governance guardrails evaluated on every SDLC workflow run. A mandatory FAIL blocks downstream progression and release readiness (REQ-D-005). An EXCEPTION_REQUESTED outcome requires a human decision and is never granted by default (REQ-D-006).",
+  "rules": [
+    {
+      "id": "SEC-001",
+      "domain": "SECURITY",
+      "description": "Redirect targets are restricted to an http/https scheme allowlist.",
+      "mandatory": true,
+      "check": "check.security.schemeAllowlist"
+    },
+    {
+      "id": "SEC-002",
+      "domain": "SECURITY",
+      "description": "Targets resolving to loopback, link-local, RFC1918 or unique-local addresses are refused at create time.",
+      "mandatory": true,
+      "check": "check.security.privateHostsBlocked"
+    },
+    {
+      "id": "SEC-003",
+      "domain": "SECURITY",
+      "description": "API keys and other secrets are never written to logs or persisted in clear text.",
+      "mandatory": true,
+      "check": "check.security.secretMasking"
+    },
+    {
+      "id": "SEC-004",
+      "domain": "SECURITY",
+      "description": "No dependency carries a known vulnerability at CVSS 7.0 or above.",
+      "mandatory": true,
+      "check": "check.security.dependencyScan"
+    },
+    {
+      "id": "COMP-001",
+      "domain": "COMPLIANCE",
+      "description": "Audit rows are append-only and retained for at least the lifetime of the run.",
+      "mandatory": true,
+      "check": "check.compliance.auditRetention"
+    },
+    {
+      "id": "COMP-002",
+      "domain": "COMPLIANCE",
+      "description": "Click analytics persist no personally identifying data.",
+      "mandatory": true,
+      "check": "check.compliance.noPiiInClicks"
+    },
+    {
+      "id": "LIC-001",
+      "domain": "LICENSING",
+      "description": "Every dependency licence is inside the Apache-2.0 / MIT / BSD / EPL-2.0 allowlist.",
+      "mandatory": false,
+      "check": "check.licensing.allowlist"
+    },
+    {
+      "id": "CC-001",
+      "domain": "CHANGE_CONTROL",
+      "description": "An API contract change carries a semantic version bump and a recorded approval.",
+      "mandatory": true,
+      "check": "check.changeControl.contractChange"
+    },
+    {
+      "id": "CC-002",
+      "domain": "CHANGE_CONTROL",
+      "description": "A change to an accepted architecture decision is recorded in an ADR.",
+      "mandatory": true,
+      "check": "check.changeControl.adrForArchitectureChange"
+    },
+    {
+      "id": "CC-003",
+      "domain": "CHANGE_CONTROL",
+      "description": "A brownfield change is preceded by an approved impact analysis.",
+      "mandatory": true,
+      "check": "check.changeControl.impactAnalysisForBrownfield"
+    },
+    {
+      "id": "TEST-001",
+      "domain": "TESTING",
+      "description": "Tasks flagged tddRequired show a failing test run before the implementing change.",
+      "mandatory": true,
+      "check": "check.testing.tddEvidence"
+    },
+    {
+      "id": "TEST-002",
+      "domain": "TESTING",
+      "description": "All mandatory tests executed in this run pass.",
+      "mandatory": true,
+      "check": "check.testing.mandatoryTestsPass"
+    },
+    {
+      "id": "TEST-003",
+      "domain": "TESTING",
+      "description": "Contract tests were executed against the published API contract.",
+      "mandatory": false,
+      "check": "check.testing.contractTestsPresent"
+    }
+  ]
+}
