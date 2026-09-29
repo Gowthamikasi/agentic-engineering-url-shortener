@@ -328,7 +328,54 @@ latency p50/p95: 26877 / 34129 ms
 > separately, because folding them together would make MTTR look best exactly when things went worst.
 > And every response is labelled DEMONSTRATION — these are scripted runs, not production statistics."
 
-## 18. It survives a restart
+## 18. The waiver workflow
+
+The three `EXCEPTION_REQUESTED` rules from step 12 are decisions a human owes. This is where they
+get made. `POST /api/v1/policy-exceptions`:
+
+```json
+{ "id": "exc_1a0eeccd57d", "policyId": "SEC-004",
+  "reason": "No dependency vulnerability scanner is wired into this prototype.",
+  "scope": "release candidate" }
+```
+
+No approver, no expiry — a request is not a waiver. Now try to approve it badly:
+
+```
+compensatingControl ""   -> 400  "a waiver with no compensating control is just a gap"
+validForDays 400         -> 400  "a longer waiver is a policy change, not an exception"
+```
+
+A valid approval carries all four:
+
+```json
+{ "approver": "madhu",
+  "compensatingControl": "Manual review of the dependency tree before release.",
+  "approvedAt": "2026-09-29T20:13:16Z", "expiresAt": "2026-10-29T20:13:16Z",
+  "reviewCondition": "Revisit once a scanner is wired into the build." }
+```
+
+> "Every organisation grants exceptions. The failure mode is that they're granted in a chat message
+> and never expire, so a temporary waiver becomes permanent and nobody remembers it exists. Here one
+> cannot be approved without a named approver, a stated compensating control, and an expiry capped at
+> 90 days. And the waived rule still reports EXCEPTION_REQUESTED — it never flips to green. The gap
+> stays visible; what changes is that someone has signed for it."
+
+## 19. Health, and an exposed trade-off
+
+```
+/health/live    {"status":"UP"}
+/health/ready   {"status":"UP","database":"UP","analyticsQueue":"UP",
+                 "analyticsQueueDepth":0,"analyticsDropped":0}
+```
+
+> "Two checks, because they answer different questions. Failing `live` means restart me. Failing
+> `ready` means stop sending me traffic but don't restart me — a briefly unreachable database isn't
+> fixed by restarting. Both are unauthenticated, because a load balancer can't hold credentials.
+> And `analyticsDropped` is the count of clicks the queue threw away under load — the cost of the
+> trade-off I chose, published as a number rather than left for someone to discover."
+
+## 20. It survives a restart
 
 Stop the process. Start it again. Request the same run:
 
