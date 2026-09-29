@@ -3,12 +3,7 @@ package com.example.urlshortener.domain;
 import java.util.EnumSet;
 import java.util.Set;
 
-/**
- * Accepts a short code for lookup if any known alphabet accepts it.
- *
- * <p>Minting narrows to one alphabet, lookup stays wide. That asymmetry is what lets the alphabet
- * change without breaking codes already in the wild.
- */
+/** Accepts a short code for lookup if any known alphabet accepts it. */
 public final class ShortCodeValidator {
 
     private final Set<Alphabet> acceptedForLookup;

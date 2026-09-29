@@ -14,12 +14,14 @@ import com.example.urlshortener.orchestration.model.TransitionEvent;
 import com.example.urlshortener.orchestration.model.WorkflowDefinition;
 import com.example.urlshortener.orchestration.model.WorkflowInstance;
 import com.example.urlshortener.orchestration.port.ApprovalStore;
+import com.example.urlshortener.orchestration.port.ArtifactStore;
 import com.example.urlshortener.orchestration.port.InstanceStore;
 import com.example.urlshortener.orchestration.port.Journal;
 import com.example.urlshortener.telemetry.audit.ActorType;
 import com.example.urlshortener.telemetry.audit.AuditActions;
 import com.example.urlshortener.telemetry.audit.AuditEvent;
 import com.example.urlshortener.telemetry.audit.AuditSink;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -32,6 +34,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -49,15 +52,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 
-/**
- * Runs a workflow definition as a dependency graph.
- *
- * <p>A node starts when its dependencies are satisfied, its branch condition holds and
- * nothing upstream has blocked. Parallel execution, joins and skipped branches all fall
- * out of that one rule.
- *
- * <p>The engine owns retry, timeout and recovery. Agents just do the work and report back.
- */
+/** Runs a workflow definition as a dependency graph. */
 public class WorkflowEngine implements AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(WorkflowEngine.class);
@@ -66,6 +61,9 @@ public class WorkflowEngine implements AutoCloseable {
     private final Journal journal;
     private final ApprovalStore approvals;
     private final InstanceStore instances;
+    private final ArtifactStore artifactStore;
+    private final RunRehydrator rehydrator;
+    private final ObjectMapper json = new ObjectMapper();
     private final AuditSink audit;
     private final BranchEvaluator branches = new BranchEvaluator();
     private final Clock clock;
@@ -74,17 +72,29 @@ public class WorkflowEngine implements AutoCloseable {
     private final ExecutorService executor;
 
     private final Map<String, WorkflowInstance> live = new ConcurrentHashMap<>();
+    private final Map<String, WorkflowDefinition> definitions = new ConcurrentHashMap<>();
     private final Map<String, Instant> gateArmedAt = new ConcurrentHashMap<>();
     private final Map<String, CompletableFuture<Void>> runLoops = new ConcurrentHashMap<>();
     private final AtomicLong runCounter = new AtomicLong();
 
-    public WorkflowEngine(Collection<StageAgent> agents, Journal journal, ApprovalStore approvals,
-                          InstanceStore instances, AuditSink audit, Clock clock, EngineSettings settings) {
+    /** How many runs to keep in memory. */
+    private static final int MAX_LIVE_RUNS = 200;
+
+    public WorkflowEngine(Collection<StageAgent> agents, Collection<WorkflowDefinition> knownDefinitions,
+                          Journal journal, ApprovalStore approvals, InstanceStore instances,
+                          ArtifactStore artifactStore, AuditSink audit, Clock clock,
+                          EngineSettings settings) {
         this.agents = new LinkedHashMap<>();
         agents.forEach(a -> this.agents.put(a.agentType(), a));
+        // Registered up front, so a run started before a restart can still be rebuilt: without the
+        // definition there is no graph to hang the journal's node states on.
+        knownDefinitions.forEach(d -> this.definitions.put(d.name(), d));
         this.journal = journal;
         this.approvals = approvals;
         this.instances = instances;
+        this.artifactStore = artifactStore;
+        this.rehydrator = new RunRehydrator(instances, journal, artifactStore, approvals,
+                name -> Optional.ofNullable(definitions.get(name)), this.json);
         this.audit = audit;
         this.clock = clock;
         this.settings = settings;
@@ -98,6 +108,7 @@ public class WorkflowEngine implements AutoCloseable {
     public WorkflowInstance start(WorkflowDefinition definition, Map<String, Object> input, String policyVersion) {
         DagValidator.validate(definition);
 
+        definitions.put(definition.name(), definition);
         String runId = "run_" + Long.toHexString(clock.millis()) + "_" + runCounter.incrementAndGet();
         WorkflowInstance instance = new WorkflowInstance(runId, definition, policyVersion, input, clock.instant());
         live.put(runId, instance);
@@ -111,24 +122,30 @@ public class WorkflowEngine implements AutoCloseable {
         return instance;
     }
 
+    /** Looks in memory first, then rebuilds the run from the database. */
     public Optional<WorkflowInstance> find(String runId) {
-        return Optional.ofNullable(live.get(runId));
+        WorkflowInstance inMemory = live.get(runId);
+        if (inMemory != null) {
+            return Optional.of(inMemory);
+        }
+        return rehydrator.rehydrate(runId);
     }
 
+    /** Runs this process is tracking. Use {@link #headers()} for every run ever recorded. */
     public List<WorkflowInstance> all() {
         return List.copyOf(live.values());
+    }
+
+    /** Every run in the database, including ones from before a restart. */
+    public List<InstanceStore.InstanceRecord> headers() {
+        return instances.findAll();
     }
 
     public Map<String, StageAgent> registeredAgents() {
         return Map.copyOf(agents);
     }
 
-    /**
-     * Records a human decision and moves the gate on.
-     *
-     * <p>The decision row is saved before the node changes state, so there is never a state
-     * change without the decision behind it.
-     */
+    /** Records a human decision and moves the gate on. */
     public Decision decide(String runId, String gateId, String decisionValue, String actor,
                            String rationale, String conditions) {
 
@@ -206,7 +223,7 @@ public class WorkflowEngine implements AutoCloseable {
         schedule(instance);
     }
 
-    /** Stops dispatching new work. Nodes already running are left to finish. */
+    /** Stops dispatching new work. */
     public void safeStop(String runId, String actor, String reason) {
         WorkflowInstance instance = require(runId);
         instance.nodes().stream()
@@ -217,11 +234,7 @@ public class WorkflowEngine implements AutoCloseable {
         persistHeader(instance);
     }
 
-    /**
-     * Safe-stops any gate that has waited longer than the approval timeout.
-     *
-     * <p>A timeout can only stop a run, never approve one (REQ-D-010).
-     */
+    /** Safe-stops any gate that has waited longer than the approval timeout. */
     public int expireApprovals() {
         int expired = 0;
         Instant now = clock.instant();
@@ -296,12 +309,7 @@ public class WorkflowEngine implements AutoCloseable {
         });
     }
 
-    /**
-     * The scheduler loop: work out what can run, dispatch it, wait for the whole wave, repeat.
-     *
-     * <p>Waiting for the full wave is what makes joins work. A node with several dependencies
-     * only becomes ready once the last of them has finished.
-     */
+    /** The scheduler loop: work out what can run, dispatch it, wait for the whole wave, repeat. */
     private void runLoop(WorkflowInstance instance) {
         MDC.put("runId", instance.runId());
         try {
@@ -369,12 +377,7 @@ public class WorkflowEngine implements AutoCloseable {
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
     }
 
-    /**
-     * Finds the nodes that can start now.
-     *
-     * <p>A node whose branch condition is false is marked SKIPPED rather than ignored, so the
-     * graph still shows the path that was not taken.
-     */
+    /** Finds the nodes that can start now. */
     private synchronized List<NodeDefinition> computeReadySet(WorkflowInstance instance) {
         List<NodeDefinition> ready = new ArrayList<>();
 
@@ -438,12 +441,7 @@ public class WorkflowEngine implements AutoCloseable {
 
     // ---------------------------------------------------------------- node execution
 
-    /**
-     * Runs one node, retrying while the failure is transient and the budget allows.
-     *
-     * <p>Retry lives here rather than inside the agent, so the attempt count in the journal
-     * matches what actually happened.
-     */
+    /** Runs one node, retrying while the failure is transient and the budget allows. */
     private void executeNodeWithRetries(WorkflowInstance instance, NodeDefinition node) {
         while (true) {
             int attempt = instance.node(node.id()).nextAttempt();
@@ -453,9 +451,11 @@ public class WorkflowEngine implements AutoCloseable {
             instance.node(node.id()).markStarted(clock.instant());
 
             Attempt outcome = runAttempt(instance, node, attempt);
+            boolean resultRecorded = false;
 
             if (outcome.succeeded()) {
                 applyResult(instance, node, outcome.result());
+                resultRecorded = true;
 
                 // Exit gate: the agent says it succeeded, so check it produced what it declared.
                 List<String> missing = missingExitArtifacts(instance, node);
@@ -475,8 +475,9 @@ public class WorkflowEngine implements AutoCloseable {
                 outcome = Attempt.failed(FailureClass.PERMANENT, false, reason, outcome.result());
             }
 
-            // Keep whatever the failed attempt produced, so there is something to look at.
-            if (outcome.result() != null) {
+            // Keep whatever the failed attempt produced, so there is something to look at. Skipped
+            // when the exit gate rejected an otherwise successful attempt, which already recorded it.
+            if (outcome.result() != null && !resultRecorded) {
                 applyResult(instance, node, outcome.result());
             }
             instance.node(node.id()).recordFailure(outcome.failureClass(), outcome.message());
@@ -602,12 +603,13 @@ public class WorkflowEngine implements AutoCloseable {
 
             instance.putArtifact(artifact);
             instance.node(node.id()).addArtifact(artifactId);
+            artifactStore.save(instance.runId(), artifact);
         }
         instance.putFacts(result.facts());
         result.assumptions().forEach(instance::addAssumption);
     }
 
-    /** Artifact types the node declared but did not produce. Empty if it declares none. */
+    /** Artifact types the node declared but did not produce. */
     private static List<String> missingExitArtifacts(WorkflowInstance instance, NodeDefinition node) {
         if (!node.hasExitGate()) {
             return List.of();
@@ -621,13 +623,7 @@ public class WorkflowEngine implements AutoCloseable {
         return node.producesArtifacts().stream().filter(type -> !produced.contains(type)).toList();
     }
 
-    /**
-     * Runs the node's declared recovery after a failure that will not be retried.
-     *
-     * <p>Whether a node is rollbackable or compensatable comes from the definition. The engine
-     * never guesses, because getting it wrong means the audit trail records an undo that did
-     * not happen.
-     */
+    /** Runs the node's declared recovery after a failure that will not be retried. */
     private void applyRecovery(WorkflowInstance instance, NodeDefinition node, Attempt outcome) {
         if (node.fallbackAllowed()) {
             transition(instance, node.id(), NodeState.FALLING_BACK, AuditActions.FALLBACK_APPLIED,
@@ -719,12 +715,7 @@ public class WorkflowEngine implements AutoCloseable {
         return gateNode.supersedes() != null && !gateNode.supersedes().isBlank();
     }
 
-    /**
-     * Invalidates everything downstream of a superseded node and re-runs it under a new
-     * definition version.
-     *
-     * <p>Nodes that did not consume the changed artifact keep their result, and their approval.
-     */
+    /** Invalidates everything downstream of a superseded node and re-runs it under a new definition version. */
     public void replan(WorkflowInstance instance, String supersededNodeId, String reason) {
         long fromVersion = instance.definitionVersion();
         Set<String> closure = downstreamClosure(instance.definition(), supersededNodeId);
@@ -780,10 +771,7 @@ public class WorkflowEngine implements AutoCloseable {
 
     // ---------------------------------------------------------------- completion
 
-    /**
-     * Works out the terminal state. A run that only finished because a node fell back is
-     * reported as COMPLETED_WITH_LIMITATIONS rather than COMPLETED.
-     */
+    /** Works out the terminal state. */
     private void finalizeRun(WorkflowInstance instance) {
         List<NodeRuntime> nodes = instance.nodes();
 
@@ -868,7 +856,35 @@ public class WorkflowEngine implements AutoCloseable {
         instances.save(new InstanceStore.InstanceRecord(instance.runId(), instance.definitionName(),
                 instance.definitionVersion(), instance.policyVersion(), instance.state().name(),
                 instance.terminalOutcome(), instance.createdAt(), instance.terminalAt(),
-                instance.input().toString()));
+                writeJson(instance.input()), writeJson(instance.facts())));
+        evictSettledRuns();
+    }
+
+    private String writeJson(Map<String, Object> value) {
+        try {
+            return json.writeValueAsString(value);
+        } catch (Exception e) {
+            return "{}";
+        }
+    }
+
+    /**
+     * Drops finished runs from memory once there are more than {@link #MAX_LIVE_RUNS}; they can be
+     * rebuilt from the database on demand.
+     */
+    private void evictSettledRuns() {
+        if (live.size() <= MAX_LIVE_RUNS) {
+            return;
+        }
+        live.entrySet().stream()
+                .filter(e -> e.getValue().state().isTerminal())
+                .sorted(Comparator.comparing(e -> e.getValue().createdAt()))
+                .limit(Math.max(0, live.size() - MAX_LIVE_RUNS))
+                .map(Map.Entry::getKey)
+                .forEach(runId -> {
+                    live.remove(runId);
+                    runLoops.remove(runId);
+                });
     }
 
     // ---------------------------------------------------------------- helpers
@@ -881,12 +897,7 @@ public class WorkflowEngine implements AutoCloseable {
         return instance;
     }
 
-    /**
-     * Artifacts feeding this node.
-     *
-     * <p>A dependency that produced nothing (a gate, a skipped node) is looked through to its
-     * own dependencies, so lineage is not cut off at a gate.
-     */
+    /** Artifacts feeding this node. */
     private static List<String> upstreamArtifactIdsOf(WorkflowInstance instance, NodeDefinition node) {
         List<String> ids = new ArrayList<>();
         collectUpstreamArtifacts(instance, node.dependsOn(), new HashSet<>(), ids);

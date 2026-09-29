@@ -5,12 +5,12 @@
 
 | Field | Value |
 |---|---|
-| Run | `run_1a0edff9acf_1` |
+| Run | `run_1a0ee3e1b74_1` |
 | Terminal state | **COMPLETED** |
 | Terminal outcome | All nodes settled successfully |
 | Definition version | 1 |
 | Policy version | 1.0.0 |
-| Policy result | `PASS:10 FAIL:0 EXC:1 NA:2` |
+| Policy result | `PASS:8 FAIL:0 EXC:3 NA:2` |
 | Release blocked | False |
 | Audit rows | 55 |
 | Journal rows | 55 |
@@ -42,8 +42,8 @@
 
 | Seq | Action | Node | Detail |
 |---|---|---|---|
-| 32 | `NodeFailed` | `contract-tests` | H2 LOCK_TIMEOUT while reading the report (fault-injected) |
-| 36 | `NodeRetryScheduled` | `contract-tests` | H2 LOCK_TIMEOUT while reading the report (fault-injected) |
+| 33 | `NodeFailed` | `contract-tests` | H2 LOCK_TIMEOUT while reading the report (fault-injected) |
+| 37 | `NodeRetryScheduled` | `contract-tests` | H2 LOCK_TIMEOUT while reading the report (fault-injected) |
 | 47 | `ApprovalRequested` | `release-gate` | Human decision required at gate release-gate |
 | 48 | `WorkflowSuspended` | `-` | Run parked at a human gate |
 | 49 | `ApprovalDecided` | `release-gate` | All mandatory policies pass, the contract change is additive and version-bumped, |
@@ -58,9 +58,11 @@
 
 | Policy | Mandatory | Outcome | Reason |
 |---|---|---|---|
+| `SEC-004` | yes | EXCEPTION_REQUESTED | No dependency vulnerability scan was executed for this run. Awaiting a human decision |
 | `LIC-001` | no | EXCEPTION_REQUESTED | No dependency licence report was produced for this run. Awaiting a human decision on  |
 | `CC-002` | yes | NOT_APPLICABLE | This run changes no architecture decision. |
 | `CC-003` | yes | NOT_APPLICABLE | Input is not classified as brownfield. |
+| `TEST-001` | yes | EXCEPTION_REQUESTED | TDD was required for one or more tasks, but this run captured no red-then-green evide |
 
 ## Replanning
 
@@ -71,7 +73,7 @@ _No replanning occurred in this run._
 | File | Contents |
 |---|---|
 | `input.md` | the requirement as submitted, and what to watch |
-| `run-run_1a0edff9acf_1.json` | final snapshot from `GET /workflows/{id}` |
+| `run-run_1a0ee3e1b74_1.json` | final snapshot from `GET /workflows/{id}` |
 | `history.json` | the transition journal, in order |
 | `audit.jsonl` | the hash-chained audit trail |
 | `graph.mmd` | Mermaid graph coloured by final node state |

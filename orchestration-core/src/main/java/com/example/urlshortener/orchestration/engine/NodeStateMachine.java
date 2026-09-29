@@ -7,13 +7,7 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * The one place node transitions are allowed or refused.
- *
- * <p>The table is closed: anything not listed throws. Several governance rules are enforced by a
- * missing edge rather than by a check somewhere else, so changing one means editing this table
- * where the tests will notice.
- */
+/** The one place node transitions are allowed or refused. */
 public final class NodeStateMachine {
 
     /** Thrown when code attempts a transition the table does not permit. */

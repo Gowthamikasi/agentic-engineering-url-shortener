@@ -7,16 +7,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * Evaluates a versioned policy set against one run.
- *
- * <p>A mandatory FAIL sets releaseBlocked. An EXCEPTION_REQUESTED only becomes a pass when a
- * matching exception is approved and still valid; a lapsed one is reported as a FAIL naming the
- * expiry, so nothing is waived just by time passing.
- */
+/** Evaluates a versioned policy set against one run. */
 public final class PolicyEvaluator {
 
-    /** A single named check. Pure: facts in, verdict out. */
+    /** A single named check. */
     @FunctionalInterface
     public interface PolicyCheck {
         CheckResult evaluate(PolicyContext context);

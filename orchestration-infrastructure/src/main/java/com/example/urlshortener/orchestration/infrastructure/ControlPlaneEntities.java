@@ -10,7 +10,7 @@ import jakarta.persistence.Table;
 
 import java.time.Instant;
 
-/** JPA mappings for the control plane. One schema, so one file. */
+/** JPA mappings for the control plane. */
 public final class ControlPlaneEntities {
 
     private ControlPlaneEntities() {
@@ -50,12 +50,16 @@ public final class ControlPlaneEntities {
         @Column(name = "input_json")
         private String inputJson;
 
+        @Lob
+        @Column(name = "facts_json")
+        private String factsJson;
+
         protected InstanceEntity() {
         }
 
         public InstanceEntity(String runId, String definitionName, long definitionVersion, String policyVersion,
                               String state, String terminalOutcome, Instant createdAt, Instant terminalAt,
-                              String inputJson) {
+                              String inputJson, String factsJson) {
             this.runId = runId;
             this.definitionName = definitionName;
             this.definitionVersion = definitionVersion;
@@ -65,6 +69,7 @@ public final class ControlPlaneEntities {
             this.createdAt = createdAt;
             this.terminalAt = terminalAt;
             this.inputJson = inputJson;
+            this.factsJson = factsJson;
         }
 
         public String getRunId() {
@@ -101,6 +106,10 @@ public final class ControlPlaneEntities {
 
         public String getInputJson() {
             return inputJson;
+        }
+
+        public String getFactsJson() {
+            return factsJson;
         }
     }
 
@@ -457,6 +466,118 @@ public final class ControlPlaneEntities {
 
         public String getHash() {
             return hash;
+        }
+    }
+
+    // Named explicitly: a nested class would otherwise get a name JPQL cannot refer to.
+    @Entity(name = "ArtifactEntity")
+    @Table(name = "workflow_artifacts")
+    public static class ArtifactEntity {
+
+        @Id
+        @Column(name = "row_id", length = 340)
+        private String rowId;
+
+        @Column(name = "artifact_id", length = 255, nullable = false)
+        private String artifactId;
+
+        @Column(name = "run_id", length = 64, nullable = false)
+        private String runId;
+
+        @Column(name = "node_id", length = 64, nullable = false)
+        private String nodeId;
+
+        @Column(name = "artifact_type", length = 64, nullable = false)
+        private String artifactType;
+
+        @Column(name = "version", nullable = false)
+        private int version;
+
+        @Column(name = "sha256", length = 64, nullable = false)
+        private String sha256;
+
+        @Lob
+        @Column(name = "content_json")
+        private String contentJson;
+
+        @Column(name = "input_artifact_ids", length = 2000)
+        private String inputArtifactIds;
+
+        @Column(name = "decision_ids", length = 2000)
+        private String decisionIds;
+
+        @Column(name = "produced_at", nullable = false)
+        private Instant producedAt;
+
+        @Column(name = "degraded", nullable = false)
+        private boolean degraded;
+
+        protected ArtifactEntity() {
+        }
+
+        public ArtifactEntity(String artifactId, String runId, String nodeId, String artifactType, int version,
+                              String sha256, String contentJson, String inputArtifactIds, String decisionIds,
+                              Instant producedAt, boolean degraded) {
+            this.rowId = runId + "|" + artifactId;
+            this.artifactId = artifactId;
+            this.runId = runId;
+            this.nodeId = nodeId;
+            this.artifactType = artifactType;
+            this.version = version;
+            this.sha256 = sha256;
+            this.contentJson = contentJson;
+            this.inputArtifactIds = truncate(inputArtifactIds, 2000);
+            this.decisionIds = truncate(decisionIds, 2000);
+            this.producedAt = producedAt;
+            this.degraded = degraded;
+        }
+
+        public String getRowId() {
+            return rowId;
+        }
+
+        public String getArtifactId() {
+            return artifactId;
+        }
+
+        public String getRunId() {
+            return runId;
+        }
+
+        public String getNodeId() {
+            return nodeId;
+        }
+
+        public String getArtifactType() {
+            return artifactType;
+        }
+
+        public int getVersion() {
+            return version;
+        }
+
+        public String getSha256() {
+            return sha256;
+        }
+
+        public String getContentJson() {
+            return contentJson;
+        }
+
+        public String getInputArtifactIds() {
+            return inputArtifactIds;
+        }
+
+        public String getDecisionIds() {
+            return decisionIds;
+        }
+
+        public Instant getProducedAt() {
+            return producedAt;
+        }
+
+        public boolean isDegraded() {
+            return degraded;
         }
     }
 

@@ -15,16 +15,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-/**
- * Finds the parts of the repository a requirement touches.
- *
- * <p>How it works: pull the significant words out of the requirement, score every main
- * source file by how many distinct ones it mentions, then pull in files that reference the
- * types those files declare.
- *
- * <p>It is a search that follows references, not an understanding of the code, and the
- * report it feeds says so.
- */
+/** Finds the parts of the repository a requirement touches. */
 public final class CodebaseScanner {
 
     /**
@@ -50,7 +41,7 @@ public final class CodebaseScanner {
         }
     }
 
-    /** Filler words. Without this list nearly every file matches and the scan is useless. */
+    /** Filler words. */
     private static final Set<String> STOPWORDS = Set.of(
             "must", "should", "shall", "will", "would", "could", "have", "has", "been", "being",
             "that", "this", "these", "those", "with", "without", "from", "into", "when", "then",
@@ -67,6 +58,8 @@ public final class CodebaseScanner {
     private static final int MIN_TERM_LENGTH = 4;
     private static final int MIN_SCORE = 2;
     private static final int MAX_MATCHES = 15;
+    /** How much a term in the file name is worth, relative to one in the body. */
+    private static final int NAME_MATCH_WEIGHT = 3;
 
     private final Path projectRoot;
 
@@ -102,8 +95,13 @@ public final class CodebaseScanner {
 
             List<String> hit = terms.stream().filter(haystack::contains).toList();
             if (hit.size() >= MIN_SCORE) {
+                // A term in the file's own name counts for more than one buried in its text.
+                // Alphabet.java is what an alphabet change is about; a file that merely discusses
+                // alphabets is not, and without this the discussion outranks the thing.
+                long nameHits = terms.stream().filter(fileName(relative)::contains).count();
+                int score = hit.size() + (int) (NAME_MATCH_WEIGHT * nameHits);
                 matches.add(new Match(moduleOf(relative), relative, classify(relative, entry.getValue()),
-                        hit.size(), hit, "terms"));
+                        score, hit, "terms"));
                 claimed.add(relative);
             }
         }
@@ -169,7 +167,7 @@ public final class CodebaseScanner {
         }
     }
 
-    /** Main sources only. Matching the tests would just report the tests as impacted. */
+    /** Main sources only. */
     private static boolean isSource(Path path) {
         String p = path.toString().replace('\\', '/');
         if (p.contains("/target/") || p.contains("/.git/") || p.contains("/src/test/")) {
@@ -186,7 +184,7 @@ public final class CodebaseScanner {
         }
     }
 
-    /** The type a Java file declares, taken from its name. Null for anything else. */
+    /** The type a Java file declares, taken from its name. */
     static String javaTypeName(String relativePath) {
         if (!relativePath.endsWith(".java")) {
             return null;
@@ -196,6 +194,12 @@ public final class CodebaseScanner {
         String typeName = fileName.substring(0, fileName.length() - ".java".length());
         // A short name would match half the repository as a substring.
         return typeName.length() < 4 ? null : typeName;
+    }
+
+    /** Lower-cased file name without the directories. */
+    private static String fileName(String relativePath) {
+        int slash = relativePath.lastIndexOf('/');
+        return (slash < 0 ? relativePath : relativePath.substring(slash + 1)).toLowerCase(Locale.ROOT);
     }
 
     private static String moduleOf(String relativePath) {

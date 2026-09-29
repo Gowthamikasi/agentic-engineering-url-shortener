@@ -9,12 +9,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/**
- * Loads a versioned policy set from the classpath or a file.
- *
- * <p>The loader refuses a set whose version field disagrees with the version asked for, so a file
- * cannot be edited in place and still claim to be what an old run was checked against.
- */
+/** Loads a versioned policy set from the classpath or a file. */
 public final class PolicySetLoader {
 
     private static final String CLASSPATH_TEMPLATE = ApiContract.POLICY_SET_TEMPLATE;

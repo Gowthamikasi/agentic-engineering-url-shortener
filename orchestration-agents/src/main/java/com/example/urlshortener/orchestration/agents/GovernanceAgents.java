@@ -26,12 +26,7 @@ public final class GovernanceAgents {
     private GovernanceAgents() {
     }
 
-    /**
-     * Evaluates the versioned policy set over everything the run produced.
-     *
-     * <p>A mandatory failure comes back as a node failure, so the release gate downstream is
-     * blocked by the engine's dependency rule rather than by someone spotting a field in a report.
-     */
+    /** Evaluates the versioned policy set over everything the run produced. */
     public static class PolicyEvaluationAgent implements StageAgent {
 
         private final ObjectMapper json;

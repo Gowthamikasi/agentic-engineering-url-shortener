@@ -7,6 +7,11 @@
 # composes them. If a scenario does not reach the state described below, the bundle will show that
 # instead, which is the point.
 #
+# The runs supply no dependencyScan and no tddEvidence on purpose. No scanner runs here, and the
+# engine never watches a test go red then green, so claiming either would be inventing evidence.
+# Both gaps come out as EXCEPTION_REQUESTED for a human to decide. The API still accepts real
+# results from a caller who has them.
+#
 #   ./scripts/demo-scenarios.sh                 # all three
 #   ./scripts/demo-scenarios.sh greenfield      # one by name
 #   ./scripts/demo-scenarios.sh ambiguous --no-decide   # stop at the clarification gate
@@ -94,9 +99,7 @@ scenario_greenfield() {
   "kind": "Greenfield",
   "actor": "madhu",
   "text": "A client may supply expiresAt (ISO-8601 UTC) when creating a link. A redirect for an expired link returns 410 Gone with a JSON problem body. An expiresAt in the past is rejected with 400. Stats must still show total clicks for an expired link.",
-  "faults": { "contract-tests": { "times": 1, "class": "TRANSIENT", "reason": "H2 LOCK_TIMEOUT while reading the report" } },
-  "dependencyScan": { "ran": true, "high": 0 },
-  "tddEvidence": { "redThenGreen": true, "ref": "docs/scenarios/greenfield/validation.md" }
+  "faults": { "contract-tests": { "times": 1, "class": "TRANSIENT", "reason": "H2 LOCK_TIMEOUT while reading the report" } }
 }
 JSON
 )
@@ -122,9 +125,7 @@ scenario_brownfield() {
   "kind": "Brownfield",
   "actor": "madhu",
   "text": "New codes must exclude the visually ambiguous characters 0, O, I and l by moving to a base58 alphabet. Existing base62 codes must continue to resolve. Validation must accept both alphabets for lookup but only base58 for newly minted codes.",
-  "faults": { "regression": { "times": 1, "class": "PERMANENT", "reason": "a legacy base62 code was rejected by the narrowed validator" } },
-  "dependencyScan": { "ran": true, "high": 0 },
-  "tddEvidence": { "redThenGreen": true, "ref": "docs/scenarios/brownfield/validation.md" }
+  "faults": { "regression": { "times": 1, "class": "PERMANENT", "reason": "a legacy base62 code was rejected by the narrowed validator" } }
 }
 JSON
 )
@@ -158,8 +159,7 @@ scenario_ambiguous() {
   "requirementId": "REQ-SC-001",
   "kind": "Unclassified",
   "actor": "madhu",
-  "text": "Links should expire after a while and we should show popular links.",
-  "dependencyScan": { "ran": true, "high": 0 }
+  "text": "Links should expire after a while and we should show popular links."
 }
 JSON
 )

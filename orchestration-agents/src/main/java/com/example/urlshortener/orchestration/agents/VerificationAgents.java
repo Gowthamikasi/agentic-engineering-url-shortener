@@ -19,12 +19,7 @@ public final class VerificationAgents {
     private VerificationAgents() {
     }
 
-    /**
-     * Reports the results of the build's own test suites.
-     *
-     * <p>Reads the Surefire XML from the last build rather than inventing a number. No matching
-     * report means the node fails.
-     */
+    /** Reports the results of the build's own test suites. */
     public static class TestRunnerAgent implements StageAgent {
 
         private final ObjectMapper json;
@@ -102,13 +97,7 @@ public final class VerificationAgents {
         }
     }
 
-    /**
-     * Reports the security posture of the change.
-     *
-     * <p>The controls it lists are ones the code implements and tests cover. A dependency
-     * vulnerability scan is different: no scanner runs here, so unless the run supplies real
-     * results this reports that none ran, and the policy set asks a human about it.
-     */
+    /** Reports the security posture of the change. */
     public static class SecurityScanAgent implements StageAgent {
 
         private final ObjectMapper json;
@@ -166,12 +155,7 @@ public final class VerificationAgents {
         }
     }
 
-    /**
-     * Regenerates documentation.
-     *
-     * <p>This is the run's non-blocking node: if it fails permanently the engine applies its
-     * fallback and the run completes with limitations rather than stopping.
-     */
+    /** Regenerates documentation. */
     public static class DocsAgent implements StageAgent {
 
         private final ObjectMapper json;

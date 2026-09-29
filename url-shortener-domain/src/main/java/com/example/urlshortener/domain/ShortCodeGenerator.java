@@ -3,11 +3,7 @@ package com.example.urlshortener.domain;
 import java.security.SecureRandom;
 import java.util.random.RandomGenerator;
 
-/**
- * Mints random short codes: length 7, from SecureRandom (ASM-003).
- *
- * <p>The alphabet is injected rather than hard-coded, so it can be changed by configuration.
- */
+/** Mints random short codes: length 7, from SecureRandom (ASM-003). */
 public final class ShortCodeGenerator {
 
     public static final int DEFAULT_LENGTH = 7;

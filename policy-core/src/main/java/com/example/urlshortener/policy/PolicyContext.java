@@ -6,12 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * The facts a policy check may look at, plus any exceptions already approved.
- *
- * <p>Checks read facts and nothing else: no database, no file system, no clock. That is what
- * makes a verdict reproducible.
- */
+/** The facts a policy check may look at, plus any exceptions already approved. */
 public final class PolicyContext {
 
     private final Map<String, Object> facts;

@@ -1,11 +1,6 @@
 package com.example.urlshortener.domain;
 
-/**
- * Short-code alphabets (ADR-004, extended by ADR-017).
- *
- * <p>BASE58 drops the glyphs that look alike: 0, O, I and l. New codes are minted from one
- * alphabet; lookup accepts both, so codes made before a switch still resolve.
- */
+/** Short-code alphabets (ADR-004, extended by ADR-017). */
 public enum Alphabet {
 
     BASE62("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"),

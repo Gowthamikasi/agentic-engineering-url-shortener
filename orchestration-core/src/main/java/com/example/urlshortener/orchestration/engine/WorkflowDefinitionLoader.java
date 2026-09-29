@@ -11,13 +11,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/**
- * Loads a workflow definition from JSON and checks it before the engine sees it.
- *
- * <p>Two checks run in order. The schema catches a malformed file: an unknown field, a misspelled
- * enum, a zero retry budget. The DAG validator then catches a well-formed file that cannot run:
- * a cycle, a dangling dependency.
- */
+/** Loads a workflow definition from JSON and checks it before the engine sees it. */
 public final class WorkflowDefinitionLoader {
 
     private final ObjectMapper mapper;

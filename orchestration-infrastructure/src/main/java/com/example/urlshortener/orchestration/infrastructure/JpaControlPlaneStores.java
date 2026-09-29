@@ -1,13 +1,16 @@
 package com.example.urlshortener.orchestration.infrastructure;
 
 import com.example.urlshortener.orchestration.infrastructure.jpa.ApprovalJpaRepository;
+import com.example.urlshortener.orchestration.infrastructure.jpa.ArtifactJpaRepository;
 import com.example.urlshortener.orchestration.infrastructure.jpa.AuditJpaRepository;
 import com.example.urlshortener.orchestration.infrastructure.jpa.InstanceJpaRepository;
 import com.example.urlshortener.orchestration.infrastructure.jpa.JournalJpaRepository;
+import com.example.urlshortener.orchestration.model.Artifact;
 import com.example.urlshortener.orchestration.model.Decision;
 import com.example.urlshortener.orchestration.model.NodeState;
 import com.example.urlshortener.orchestration.model.TransitionEvent;
 import com.example.urlshortener.orchestration.port.ApprovalStore;
+import com.example.urlshortener.orchestration.port.ArtifactStore;
 import com.example.urlshortener.orchestration.port.InstanceStore;
 import com.example.urlshortener.orchestration.port.Journal;
 import com.example.urlshortener.telemetry.audit.ActorType;
@@ -28,12 +31,7 @@ public final class JpaControlPlaneStores {
     private JpaControlPlaneStores() {
     }
 
-    /**
-     * The transition journal.
-     *
-     * <p>Each append commits on its own, so the record of what happened survives even when the
-     * work that followed it does not.
-     */
+    /** The transition journal. */
     @Repository
     public static class JpaJournal implements Journal {
 
@@ -81,7 +79,7 @@ public final class JpaControlPlaneStores {
         }
     }
 
-    /** Human decisions. A gate only changes state once a row exists here. */
+    /** Human decisions. */
     @Repository
     public static class JpaApprovalStore implements ApprovalStore {
 
@@ -121,6 +119,42 @@ public final class JpaControlPlaneStores {
         }
     }
 
+    /** Node outputs, so lineage and artifacts survive a restart. */
+    @Repository
+    public static class JpaArtifactStore implements ArtifactStore {
+
+        private final ArtifactJpaRepository jpa;
+
+        public JpaArtifactStore(ArtifactJpaRepository jpa) {
+            this.jpa = jpa;
+        }
+
+        @Override
+        @Transactional(propagation = Propagation.REQUIRES_NEW)
+        public void save(String runId, Artifact artifact) {
+            jpa.save(new ControlPlaneEntities.ArtifactEntity(artifact.artifactId(), runId, artifact.nodeId(),
+                    artifact.type(), artifact.version(), artifact.sha256(), artifact.contentJson(),
+                    String.join(",", artifact.inputArtifactIds()), String.join(",", artifact.decisionIds()),
+                    artifact.producedAt(), artifact.degraded()));
+        }
+
+        @Override
+        @Transactional(readOnly = true)
+        public List<Artifact> findByRun(String runId) {
+            return jpa.findByRunIdOrderByProducedAtAsc(runId).stream().map(JpaArtifactStore::toDomain).toList();
+        }
+
+        private static Artifact toDomain(ControlPlaneEntities.ArtifactEntity e) {
+            return new Artifact(e.getArtifactId(), e.getNodeId(), e.getArtifactType(), e.getVersion(),
+                    e.getSha256(), e.getContentJson(), split(e.getInputArtifactIds()),
+                    split(e.getDecisionIds()), e.getProducedAt(), e.isDegraded());
+        }
+
+        private static List<String> split(String csv) {
+            return csv == null || csv.isBlank() ? List.of() : Arrays.asList(csv.split(","));
+        }
+    }
+
     /** Run headers, so a restarted process can list runs without reading the journal. */
     @Repository
     public static class JpaInstanceStore implements InstanceStore {
@@ -136,7 +170,7 @@ public final class JpaControlPlaneStores {
         public void save(InstanceRecord record) {
             jpa.save(new ControlPlaneEntities.InstanceEntity(record.runId(), record.definitionName(),
                     record.definitionVersion(), record.policyVersion(), record.state(), record.terminalOutcome(),
-                    record.createdAt(), record.terminalAt(), record.inputJson()));
+                    record.createdAt(), record.terminalAt(), record.inputJson(), record.factsJson()));
         }
 
         @Override
@@ -154,16 +188,11 @@ public final class JpaControlPlaneStores {
         private static InstanceRecord toDomain(ControlPlaneEntities.InstanceEntity e) {
             return new InstanceRecord(e.getRunId(), e.getDefinitionName(), e.getDefinitionVersion(),
                     e.getPolicyVersion(), e.getState(), e.getTerminalOutcome(), e.getCreatedAt(),
-                    e.getTerminalAt(), e.getInputJson());
+                    e.getTerminalAt(), e.getInputJson(), e.getFactsJson());
         }
     }
 
-    /**
-     * The audit trail.
-     *
-     * <p>Appends are serialised per run so the hash chain stays a chain; two concurrent writes
-     * reading the same predecessor would fork it.
-     */
+    /** The audit trail. */
     @Repository
     public static class JpaAuditSink implements AuditSink {
 

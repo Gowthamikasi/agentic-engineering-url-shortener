@@ -16,13 +16,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-/**
- * Records clicks off the redirect path.
- *
- * <p>The redirect handler offers an event to a bounded queue and returns; one consumer
- * thread drains it in batches. So counts are eventually consistent, and under a flood the
- * queue drops events rather than making redirects wait.
- */
+/** Records clicks off the redirect path. */
 @Component
 public class QueuedClickRecorder implements ClickRecorder, SmartLifecycle {
 
@@ -139,7 +133,7 @@ public class QueuedClickRecorder implements ClickRecorder, SmartLifecycle {
 
     // ------------------------------------------------------------------ observability
 
-    /** Blocks until the queue is empty or the timeout passes. Test and demo helper. */
+    /** Blocks until the queue is empty or the timeout passes. */
     public boolean awaitDrained(long timeoutMs) {
         long deadline = System.currentTimeMillis() + timeoutMs;
         while (System.currentTimeMillis() < deadline) {

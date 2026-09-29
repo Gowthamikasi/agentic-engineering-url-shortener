@@ -19,16 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Works out reliability metrics, including MTTR, from the journal.
- *
- * <p>MTTR averages recovered failures only; unrecovered ones are reported separately (REQ-D-007).
- * Folding them together would make MTTR look best exactly when things went worst.
- *
- * <p>A failure opens on the first NodeFailed or NodeTimedOut for a node and closes when that node
- * reports NodeSucceeded. The first recovery-shaped event in between records when recovery started
- * and how.
- */
+/** Works out reliability metrics, including MTTR, from the journal. */
 public final class ReliabilityMetricsCalculator {
 
     private static final Set<String> FAILURE_ACTIONS = Set.of(AuditActions.NODE_FAILED, AuditActions.NODE_TIMED_OUT);

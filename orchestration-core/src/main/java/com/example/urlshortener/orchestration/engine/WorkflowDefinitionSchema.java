@@ -11,12 +11,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
-/**
- * Validates a workflow definition against its published JSON schema.
- *
- * <p>Running it at load keeps the published contract and the accepted input in step; a schema
- * nothing checks drifts away from the code it describes.
- */
+/** Validates a workflow definition against its published JSON schema. */
 public final class WorkflowDefinitionSchema {
 
     public static final String SCHEMA_RESOURCE = "/schemas/workflow-definition.schema.json";

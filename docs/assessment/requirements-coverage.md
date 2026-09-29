@@ -81,7 +81,7 @@ renames here).
 | Safe-stop | Permanent failure, exhausted retries, approval timeout, operator request, engine error | multiple engine tests |
 | Policy guardrails | 13 rules, five domains, versioned and stamped per run | `PolicyEvaluatorTest`, `DefaultPolicyChecksTest` |
 | Audit-grade observability | Append-only, hash-chained, `X-Audit-Chain` verification header | `AuditHasherTest`; verified live in `ControlPlaneE2ETest` |
-| Success rate | from the journal | `/api/v1/metrics/reliability` |
+| Success rate | from the stored run headers | `/api/v1/metrics/reliability`, unchanged across a restart |
 | Retry / rollback frequency | from the journal | same |
 | **MTTR** | recovered failures only; unrecovered reported separately | `mttr_averages_only_recovered_failures` |
 | End-to-end latency | p50 / p95 from run records | same |
@@ -167,11 +167,13 @@ Listed here rather than left for a reviewer to discover:
 1. **Agents are deterministic, not LLM-backed.** `StageAgent` is the seam; the adapter is not built.
 2. **`implement` records a change set; it does not write code.** Every artifact it produces says so.
 3. **No dependency vulnerability scanner, secret scanner or SBOM.** Reported as a gap that raises a
-   policy exception request, never as a clean scan.
-4. **TDD evidence is supplied as a run input, not observed.** The engine cannot watch a test go red
-   then green because it does not write the code. Absent, TEST-001 raises an exception request.
-5. **In-flight runs are not rehydrated after a restart.** The journal is durable and is the source
-   of truth; the rebuild-on-boot path is not implemented.
+   policy exception request, never as a clean scan. The demo runs supply no scan results, so the
+   shipped evidence shows SEC-004 as `EXCEPTION_REQUESTED`.
+4. **TDD evidence can only be supplied as a run input, never observed.** The engine does not write
+   the code, so it cannot watch a test go red then green. The demo supplies none, so TEST-001 shows
+   as `EXCEPTION_REQUESTED` in every bundle.
+5. **Runs that were mid-flight when the process stopped are not resumed.** Finished runs rebuild
+   from the database on demand and answer on every endpoint, but nothing picks up interrupted work.
 6. **The recorded approver is asserted, not authenticated** (ADR-015).
 7. **The audit chain is tamper-evident, not tamper-proof.**
 8. **No scenario dedicated to test/documentation improvement**, as noted in the scope table above.

@@ -2,13 +2,7 @@ package com.example.urlshortener.telemetry.audit;
 
 import java.time.Instant;
 
-/**
- * One append-only audit row.
- *
- * <p>prevHash and hash form a per-run chain: each row commits to its own content plus the
- * previous row's hash, so editing or removing one breaks every hash after it. Tamper-evident,
- * not tamper-proof.
- */
+/** One append-only audit row. */
 public record AuditEvent(
         String runId,
         long seq,

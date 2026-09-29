@@ -25,12 +25,7 @@ import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The application plane over real HTTP on a real port.
- *
- * <p>MockMvc stops short of the container: no real redirect responses, no real filter chain,
- * and no way to show the click queue actually lands rows. These go over a socket.
- */
+/** The application plane over real HTTP on a real port. */
 @Tag("e2e")
 @SpringBootTest(classes = Application.class,
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -70,12 +65,7 @@ class ApplicationPlaneE2ETest {
         return response.getBody();
     }
 
-    /**
-     * A client that neither follows redirects nor throws on an error status.
-     *
-     * <p>Following the redirect would turn the 302 into whatever example.org answers, and the
-     * default error handler would turn an expected 410 into a failure.
-     */
+    /** A client that neither follows redirects nor throws on an error status. */
     private ResponseEntity<String> follow(String code) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory() {
             @Override

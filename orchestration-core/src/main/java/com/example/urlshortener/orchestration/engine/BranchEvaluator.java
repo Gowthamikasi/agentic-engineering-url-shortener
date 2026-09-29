@@ -8,16 +8,7 @@ import org.springframework.expression.spel.support.SimpleEvaluationContext;
 
 import java.util.Map;
 
-/**
- * Evaluates a node's branchCondition against the run context.
- *
- * <p>Expressions see two read-only maps, #input and #facts, and nothing else. The evaluation
- * context only allows property reads, so a condition in a definition file cannot call methods or
- * construct objects.
- *
- * <p>A broken expression evaluates to false. A node skipped because of a typo is visible in the
- * graph; a node that ran because of one would not be.
- */
+/** Evaluates a node's branchCondition against the run context. */
 public final class BranchEvaluator {
 
     private final ExpressionParser parser =

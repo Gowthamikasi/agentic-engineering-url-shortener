@@ -10,12 +10,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The brownfield scan, against a real directory tree.
- *
- * <p>Uses a temporary repository rather than this one, so the assertions survive renames
- * here.
- */
+/** The brownfield scan, against a real directory tree. */
 class CodebaseScannerTest {
 
     private static void write(Path root, String relative, String content) throws IOException {

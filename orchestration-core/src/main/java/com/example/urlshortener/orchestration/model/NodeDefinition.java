@@ -60,7 +60,7 @@ public record NodeDefinition(
         backoffBaseMs = backoffBaseMs <= 0 ? 1_000 : backoffBaseMs;
     }
 
-    /** True when this node declares an exit gate, i.e. output the engine will check for. */
+    /** True when this node declares an exit gate, i.e. */
     public boolean hasExitGate() {
         return !producesArtifacts.isEmpty();
     }

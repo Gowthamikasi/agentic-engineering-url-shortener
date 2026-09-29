@@ -8,12 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Approved deviations from mandatory policy.
- *
- * <p>Kept apart from decisions because an exception outlives the run that asked for it: it has
- * its own expiry and later runs re-check it.
- */
+/** Approved deviations from mandatory policy. */
 @Repository
 public class PolicyExceptionStore {
 

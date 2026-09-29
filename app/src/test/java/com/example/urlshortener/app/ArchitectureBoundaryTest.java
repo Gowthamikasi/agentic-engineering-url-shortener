@@ -10,12 +10,7 @@ import org.junit.jupiter.api.Test;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
-/**
- * The module boundaries, checked rather than described.
- *
- * <p>These rules fail the build if either plane grows a dependency on the other, if the domain
- * picks up Spring or JPA, or if a controller reaches past its services.
- */
+/** The module boundaries, checked rather than described. */
 class ArchitectureBoundaryTest {
 
     private static JavaClasses classes;

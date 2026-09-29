@@ -3,7 +3,7 @@ package com.example.urlshortener.orchestration.model;
 import java.time.Instant;
 import java.util.List;
 
-/** A recorded decision, human or engine. The rationale is required, not decorative. */
+/** A recorded decision, human or engine. */
 public record Decision(
         String decisionId,
         String gateId,

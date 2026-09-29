@@ -62,12 +62,7 @@ public final class RequirementAgents {
         }
     }
 
-    /**
-     * Restates the requirement in testable form.
-     *
-     * <p>A recorded clarification decision gets folded in here, which is why the clarify gate
-     * supersedes this node: re-running it gives everything downstream a different input.
-     */
+    /** Restates the requirement in testable form. */
     public static class RequirementNormalizeAgent implements StageAgent {
 
         private final ObjectMapper json;
@@ -119,12 +114,7 @@ public final class RequirementAgents {
         }
     }
 
-    /**
-     * Decides whether the requirement is safe to implement as written.
-     *
-     * <p>The gate is only armed when a check actually fails (REQ-D-009). Asking a question on
-     * every run would train reviewers to approve without reading.
-     */
+    /** Decides whether the requirement is safe to implement as written. */
     public static class RequirementQualityAgent implements StageAgent {
 
         /** Phrases that state an intent without giving anything testable. */

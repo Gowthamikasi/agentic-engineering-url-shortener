@@ -6,12 +6,7 @@ import java.io.IOException;
 import java.util.Locale;
 import java.util.concurrent.TimeoutException;
 
-/**
- * Decides whether a failure is worth retrying.
- *
- * <p>The default is PERMANENT. Getting it wrong that way costs one human decision; the other way
- * burns the retry budget repeating something that cannot work.
- */
+/** Decides whether a failure is worth retrying. */
 public final class FailureClassifier {
 
     private static final String[] TRANSIENT_SIGNATURES = {

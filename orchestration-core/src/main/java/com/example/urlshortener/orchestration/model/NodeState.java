@@ -1,6 +1,6 @@
 package com.example.urlshortener.orchestration.model;
 
-/** States a node can be in. Legal transitions live in one table in NodeStateMachine. */
+/** States a node can be in. */
 public enum NodeState {
 
     PENDING,

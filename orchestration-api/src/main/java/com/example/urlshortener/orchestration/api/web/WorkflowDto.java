@@ -30,7 +30,7 @@ public final class WorkflowDto {
             Map<String, Object> tddEvidence) {
     }
 
-    /** A human decision at a gate. Actor and rationale are both required. */
+    /** A human decision at a gate. */
     public record DecisionRequest(
             @NotBlank(message = "decision is required") String decision,
             @NotBlank(message = "actor is required") String actor,

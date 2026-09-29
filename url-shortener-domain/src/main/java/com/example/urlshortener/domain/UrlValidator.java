@@ -12,15 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-/**
- * Validates and canonicalises a target URL before it is stored (ASM-014).
- *
- * <p>Checks run in order: syntax, scheme allowlist, length, embedded credentials, host
- * denylist, then every address the host resolves to.
- *
- * <p>Resolution happens at create time, so a host pointing somewhere private never gets a short
- * code and there is nothing to follow later.
- */
+/** Validates and canonicalises a target URL before it is stored (ASM-014). */
 public final class UrlValidator {
 
     public static final int MAX_URL_LENGTH = 2048;
@@ -132,7 +124,7 @@ public final class UrlValidator {
         return first == 100 && second >= 64 && second <= 127;
     }
 
-    /** Lower-cases scheme and host and drops a default port. Path and query are left alone. */
+    /** Lower-cases scheme and host and drops a default port. */
     private static URI canonicalise(URI uri, String scheme, String lowerHost) {
         int port = uri.getPort();
         if (("http".equals(scheme) && port == 80) || ("https".equals(scheme) && port == 443)) {

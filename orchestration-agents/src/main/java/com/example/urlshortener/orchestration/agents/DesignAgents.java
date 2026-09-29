@@ -20,11 +20,7 @@ public final class DesignAgents {
     private DesignAgents() {
     }
 
-    /**
-     * Brownfield impact analysis: what the change touches and how it would be undone.
-     *
-     * <p>Runs before any code changes, because its output is what the approval gate shows.
-     */
+    /** Brownfield impact analysis: what the change touches and how it would be undone. */
     public static class ImpactAnalysisAgent implements StageAgent {
 
         private final ObjectMapper json;
@@ -213,12 +209,7 @@ public final class DesignAgents {
         }
     }
 
-    /**
-     * Decides the API contract impact and the version change that follows.
-     *
-     * <p>The version rule is mechanical: an additive optional field is a minor bump, a removal
-     * or a type change is a major one behind a new path prefix.
-     */
+    /** Decides the API contract impact and the version change that follows. */
     public static class ContractAgent implements StageAgent {
 
         private final ObjectMapper json;
@@ -326,11 +317,7 @@ public final class DesignAgents {
         }
     }
 
-    /**
-     * Records the change set the decomposition and contract call for.
-     *
-     * <p>It does not generate code (ASM-001, EXC-004), and the artifact it produces says so.
-     */
+    /** Records the change set the decomposition and contract call for. */
     public static class ImplementAgent implements StageAgent {
 
         private final ObjectMapper json;
@@ -380,7 +367,7 @@ public final class DesignAgents {
         }
     }
 
-    /** Never dispatched. Gate nodes are held by the engine and settled by a human decision. */
+    /** Never dispatched. */
     public static class HumanGateAgent implements StageAgent {
 
         @Override

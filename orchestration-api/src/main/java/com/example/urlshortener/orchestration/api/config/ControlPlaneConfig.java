@@ -13,6 +13,7 @@ import com.example.urlshortener.orchestration.engine.WorkflowEngine;
 import com.example.urlshortener.orchestration.infrastructure.PolicyExceptionStore;
 import com.example.urlshortener.orchestration.model.WorkflowDefinition;
 import com.example.urlshortener.orchestration.port.ApprovalStore;
+import com.example.urlshortener.orchestration.port.ArtifactStore;
 import com.example.urlshortener.orchestration.port.InstanceStore;
 import com.example.urlshortener.orchestration.port.Journal;
 import com.example.urlshortener.policy.DefaultPolicyChecks;
@@ -29,12 +30,7 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.util.List;
 
-/**
- * Wires the control plane.
- *
- * <p>Agents are listed here, so everything the engine is willing to run is visible in one place.
- * An agent that is not on the list cannot be reached from a definition file.
- */
+/** Wires the control plane. */
 @Configuration
 @EnableConfigurationProperties(OrchestrationProperties.class)
 public class ControlPlaneConfig {
@@ -102,11 +98,13 @@ public class ControlPlaneConfig {
     }
 
     @Bean(destroyMethod = "close")
-    public WorkflowEngine workflowEngine(List<StageAgent> agents, Journal journal, ApprovalStore approvals,
-                                         InstanceStore instances, AuditSink audit, Clock clock,
+    public WorkflowEngine workflowEngine(List<StageAgent> agents, WorkflowDefinition sdlcDefinition,
+                                         Journal journal, ApprovalStore approvals, InstanceStore instances,
+                                         ArtifactStore artifacts, AuditSink audit, Clock clock,
                                          OrchestrationProperties properties) {
         EngineSettings settings = new EngineSettings(properties.getMaxParallelism(),
                 properties.getApprovalTimeout(), 0.2);
-        return new WorkflowEngine(agents, journal, approvals, instances, audit, clock, settings);
+        return new WorkflowEngine(agents, List.of(sdlcDefinition), journal, approvals, instances,
+                artifacts, audit, clock, settings);
     }
 }

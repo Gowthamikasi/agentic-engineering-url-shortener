@@ -13,24 +13,18 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 
-/**
- * Resolves a presented X-Api-Key to the caller it authenticates.
- *
- * <p>Configuration holds SHA-256 hashes, never the keys. Comparison uses
- * MessageDigest.isEqual and checks every configured key, so timing does not reveal which
- * one nearly matched.
- */
+/** Resolves a presented X-Api-Key to the caller it authenticates. */
 @Component
 public class ApiKeyRegistry {
 
-    /** What a key may do. Control-plane access is separate from application writes. */
+    /** What a key may do. */
     public enum Scope {
         READ,
         WRITE,
         CONTROL
     }
 
-    /** An authenticated caller. Carries the key id for audit, never the key. */
+    /** An authenticated caller. */
     public record Principal(String keyId, Set<Scope> scopes) {
 
         public boolean has(Scope scope) {

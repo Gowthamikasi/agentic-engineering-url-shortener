@@ -20,12 +20,7 @@ import java.security.SecureRandom;
 import java.time.Clock;
 import java.util.EnumSet;
 
-/**
- * Wires the application plane.
- *
- * <p>Filter order matters: headers first so they are set even on a rejected request,
- * then authentication so the rate limiter can bucket by key id, then the rate limiter.
- */
+/** Wires the application plane. */
 @Configuration
 @EnableConfigurationProperties(UrlShortenerProperties.class)
 public class ApplicationPlaneConfig {
@@ -40,7 +35,7 @@ public class ApplicationPlaneConfig {
         return new UrlValidator(new InetAddressHostResolver(), properties.getValidation().isEnforceAddressChecks());
     }
 
-    /** Mints with the configured alphabet only. Lookup is wider, see below. */
+    /** Mints with the configured alphabet only. */
     @Bean
     public ShortCodeGenerator shortCodeGenerator(UrlShortenerProperties properties) {
         return new ShortCodeGenerator(

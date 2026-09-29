@@ -22,13 +22,7 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
 
-/**
- * Creates short links: validate, check idempotency, then mint a code.
- *
- * <p>The order matters. Validating first means a bad URL is rejected the same way with or
- * without an Idempotency-Key, and checking idempotency before minting means a retried
- * request does not burn a second code.
- */
+/** Creates short links: validate, check idempotency, then mint a code. */
 @Service
 public class CreateLinkService {
 
@@ -107,12 +101,7 @@ public class CreateLinkService {
         return links.findByCode(record.code()).map(link -> new Outcome(link, true));
     }
 
-    /**
-     * Mints a free code, giving up after a bounded number of collisions.
-     *
-     * <p>With a 62^7 space a collision is already unlikely, so repeated ones mean something is
-     * wrong. Looping forever would turn that into a hang instead of an error.
-     */
+    /** Mints a free code, giving up after a bounded number of collisions. */
     private ShortLink mint(Command command, UrlValidationResult validation, Instant now) {
         for (int attempt = 1; attempt <= collisionRetries; attempt++) {
             ShortLink candidate = new ShortLink(generator.next(), validation.canonical(), now,

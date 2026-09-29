@@ -3,12 +3,7 @@ package com.example.urlshortener.orchestration.model;
 import java.time.Instant;
 import java.util.List;
 
-/**
- * A versioned output of a node.
- *
- * <p>Each artifact records the artifacts and decisions it came from, so lineage can be walked
- * back to the original requirement.
- */
+/** A versioned output of a node. */
 public record Artifact(
         String artifactId,
         String nodeId,

@@ -268,11 +268,11 @@ Every response carries `"dataClass": "DEMONSTRATION"`.
 | `url-shortener-api` | 24 | full API contract, idempotency, auth scopes, expiry, health |
 | `telemetry` | 12 | MTTR including the unrecovered mix, hash-chain tamper detection |
 | `policy-core` | 18 | outcomes, mandatory blocking, exception expiry, the shipped rule set |
-| `orchestration-core` | 59 | schema and DAG validation, prohibited transitions, entry and exit gates, parallelism, joins, retry bounds, timeout, fallback, rollback vs compensation, replanning |
+| `orchestration-core` | 67 | schema and DAG validation, prohibited transitions, entry and exit gates, parallelism, joins, retry bounds, timeout, fallback, rollback vs compensation, replanning |
 | `orchestration-agents` | 16 | the clarification decision against all three scenario texts; codebase scanning for brownfield impact |
 | `app` | 7 | ArchUnit module boundaries |
 | `app` (integration) | 16 | both planes end to end over real HTTP on a real port |
-| **Total** | **197** | |
+| **Total** | **205** | |
 
 ---
 

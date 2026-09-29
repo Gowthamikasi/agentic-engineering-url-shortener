@@ -8,12 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
-/**
- * One run of a workflow definition.
- *
- * <p>This is the in-memory snapshot. The journal is the source of truth: everything here can be
- * rebuilt by replaying its transition events.
- */
+/** One run of a workflow definition. */
 public final class WorkflowInstance {
 
     private final String runId;

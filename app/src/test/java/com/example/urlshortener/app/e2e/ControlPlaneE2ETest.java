@@ -20,13 +20,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A governed run driven over HTTP, the way a reviewer or a pipeline would drive it.
- *
- * <p>The engine's own tests use stub agents in-process. These use the real workflow, the real
- * agents and the real API, so they show the pieces line up: the run parks, the decision
- * endpoint releases it, and the audit trail verifies afterwards.
- */
+/** A governed run driven over HTTP, the way a reviewer or a pipeline would drive it. */
 @Tag("e2e")
 @SpringBootTest(classes = Application.class,
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -219,6 +213,9 @@ class ControlPlaneE2ETest {
                 url("/api/v1/workflows/" + runId + "/gates/release-gate/decision"),
                 request(noRationale), String.class);
         assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        // The control plane must answer for itself. Asserting only the status let the application
+        // plane's advice reply here with a URL error code on a governance endpoint.
+        assertThat(refused.getBody()).contains("INVALID_REQUEST").doesNotContain("URL_MALFORMED");
 
         assertThat(decide(runId, "release-gate", "READY", "A properly explained approval.")
                 .getStatusCode()).isEqualTo(HttpStatus.OK);

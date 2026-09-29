@@ -12,12 +12,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The clarification decision, pinned against the three scenario inputs.
- *
- * <p>REQ-D-009 cuts both ways: a clear requirement must not be stopped, and a vague one must
- * not be waved through. Both directions are tested.
- */
+/** The clarification decision, pinned against the three scenario inputs. */
 class RequirementQualityAgentTest {
 
     private static final String SCENARIO_A = """

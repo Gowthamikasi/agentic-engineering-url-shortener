@@ -10,7 +10,7 @@ public interface InstanceStore {
     /** Header row; the full state lives in the journal. */
     record InstanceRecord(String runId, String definitionName, long definitionVersion, String policyVersion,
                           String state, String terminalOutcome, Instant createdAt, Instant terminalAt,
-                          String inputJson) {
+                          String inputJson, String factsJson) {
     }
 
     void save(InstanceRecord record);

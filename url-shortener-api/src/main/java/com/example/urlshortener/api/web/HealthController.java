@@ -12,14 +12,7 @@ import java.sql.Connection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Liveness and readiness.
- *
- * <p>Liveness asks whether the process should be restarted, so it checks only the JVM.
- * Readiness asks whether this instance should get traffic, so it also checks the database and
- * whether the click queue has saturated. A saturated queue means clicks are being dropped:
- * a reason to shed traffic, not to restart.
- */
+/** Liveness and readiness. */
 @RestController
 @RequestMapping("/health")
 public class HealthController {

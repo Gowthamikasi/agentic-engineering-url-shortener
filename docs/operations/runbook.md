@@ -90,9 +90,13 @@ implied.
 
 ## What to check after a restart
 
-The journal is durable and is the source of truth, but **in-flight runs are not automatically
-rehydrated into memory** (limitation §19.8). After a restart:
+Everything a finished run recorded is in the database, and the API rebuilds the run from there the
+first time it is asked for. After a restart:
 
-- Completed runs keep their journal, audit trail and decisions — `/history` and `/audit` still answer.
-- Runs that were mid-flight are not resumed. Start them again; their original journal remains
-  readable as the record of what happened.
+- **Finished runs answer on every endpoint** — `/{runId}`, `/history`, `/audit`, `/artifacts`,
+  `/graph`, `/gates` and `/lineage`. Node states come from the journal, artifacts and facts from
+  their own tables, decisions from the approval store.
+- **Reliability metrics cover every run ever recorded**, because they are computed from the stored
+  run headers and journal rather than from whatever is in memory.
+- **Runs that were mid-flight are not resumed.** Their journal is intact and readable, but nothing
+  picks the work back up; start them again.

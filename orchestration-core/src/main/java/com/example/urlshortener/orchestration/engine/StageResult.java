@@ -5,11 +5,7 @@ import com.example.urlshortener.orchestration.model.FailureClass;
 import java.util.List;
 import java.util.Map;
 
-/**
- * What an agent reports back.
- *
- * <p>An agent can escalate a failure to PERMANENT but cannot talk the engine down to TRANSIENT.
- */
+/** What an agent reports back. */
 public record StageResult(
         Outcome outcome,
         FailureClass failureClass,
@@ -23,7 +19,7 @@ public record StageResult(
         FAILURE
     }
 
-    /** An artifact the agent wants recorded. The engine assigns the id, version and hash. */
+    /** An artifact the agent wants recorded. */
     public record ArtifactDraft(String type, String contentJson, List<String> inputArtifactIds) {
 
         public ArtifactDraft {

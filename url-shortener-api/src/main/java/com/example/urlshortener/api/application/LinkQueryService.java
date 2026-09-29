@@ -75,7 +75,7 @@ public class LinkQueryService {
         return links.findByCode(code).orElseThrow(() -> new LinkNotFoundException(code));
     }
 
-    /** Keep the host only. A full referer is a URL that may itself identify someone. */
+    /** Keep the host only. */
     static String refererHost(String referer) {
         if (referer == null || referer.isBlank()) {
             return null;
@@ -88,7 +88,7 @@ public class LinkQueryService {
         }
     }
 
-    /** Coarse bucket only. Storing the raw user agent would make the click table a fingerprint. */
+    /** Coarse bucket only. */
     static String classifyUserAgent(String userAgent) {
         if (userAgent == null || userAgent.isBlank()) {
             return ClickEvent.UA_UNKNOWN;

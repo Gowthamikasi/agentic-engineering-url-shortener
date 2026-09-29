@@ -22,12 +22,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Token-bucket rate limiting: creates per API key, redirects per client address.
- *
- * <p>Separate buckets because they guard different things. The buckets are process-local,
- * which is fine for a single node and would need a shared store otherwise.
- */
+/** Token-bucket rate limiting: creates per API key, redirects per client address. */
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private final UrlShortenerProperties.RateLimit config;

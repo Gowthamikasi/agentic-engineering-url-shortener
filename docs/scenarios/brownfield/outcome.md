@@ -5,12 +5,12 @@
 
 | Field | Value |
 |---|---|
-| Run | `run_1a0edffa4d2_2` |
+| Run | `run_1a0ee3e24f6_2` |
 | Terminal state | **COMPLETED** |
 | Terminal outcome | All nodes settled successfully |
 | Definition version | 1 |
 | Policy version | 1.0.0 |
-| Policy result | `PASS:11 FAIL:0 EXC:1 NA:1` |
+| Policy result | `PASS:9 FAIL:0 EXC:3 NA:1` |
 | Release blocked | False |
 | Audit rows | 75 |
 | Journal rows | 75 |
@@ -70,8 +70,10 @@
 
 | Policy | Mandatory | Outcome | Reason |
 |---|---|---|---|
+| `SEC-004` | yes | EXCEPTION_REQUESTED | No dependency vulnerability scan was executed for this run. Awaiting a human decision |
 | `LIC-001` | no | EXCEPTION_REQUESTED | No dependency licence report was produced for this run. Awaiting a human decision on  |
 | `CC-001` | yes | NOT_APPLICABLE | This run does not change the API contract. |
+| `TEST-001` | yes | EXCEPTION_REQUESTED | TDD was required for one or more tasks, but this run captured no red-then-green evide |
 
 ## Replanning
 
@@ -82,7 +84,7 @@ _No replanning occurred in this run._
 | File | Contents |
 |---|---|
 | `input.md` | the requirement as submitted, and what to watch |
-| `run-run_1a0edffa4d2_2.json` | final snapshot from `GET /workflows/{id}` |
+| `run-run_1a0ee3e24f6_2.json` | final snapshot from `GET /workflows/{id}` |
 | `history.json` | the transition journal, in order |
 | `audit.jsonl` | the hash-chained audit trail |
 | `graph.mmd` | Mermaid graph coloured by final node state |

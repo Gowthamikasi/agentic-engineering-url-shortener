@@ -2,7 +2,7 @@ package com.example.urlshortener.orchestration.api.web;
 
 import com.example.urlshortener.orchestration.engine.WorkflowEngine;
 import com.example.urlshortener.orchestration.model.TransitionEvent;
-import com.example.urlshortener.orchestration.model.WorkflowInstance;
+import com.example.urlshortener.orchestration.port.InstanceStore;
 import com.example.urlshortener.orchestration.port.Journal;
 import com.example.urlshortener.telemetry.metrics.ReliabilityMetricsCalculator;
 import com.example.urlshortener.telemetry.metrics.ReliabilityModel;
@@ -15,13 +15,7 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 
-/**
- * Reliability metrics, recomputed from the journal on every request.
- *
- * <p>Nothing is stored or maintained by hand: these come from the same rows served at /audit.
- * Every response is labelled DEMONSTRATION, because they are numbers from a few scripted runs
- * rather than production statistics.
- */
+/** Reliability metrics, recomputed from the stored run headers and journal on every request. */
 @RestController
 @RequestMapping("/api/v1/metrics")
 public class ReliabilityMetricsController {
@@ -41,21 +35,21 @@ public class ReliabilityMetricsController {
     public ReliabilityModel.ReliabilityReport reliability(
             @RequestParam(value = "runId", required = false) List<String> runIds) {
 
-        List<WorkflowInstance> instances = engine.all().stream()
-                .filter(i -> runIds == null || runIds.contains(i.runId()))
-                .sorted(Comparator.comparing(WorkflowInstance::createdAt))
+        List<InstanceStore.InstanceRecord> headers = engine.headers().stream()
+                .filter(r -> runIds == null || runIds.contains(r.runId()))
+                .sorted(Comparator.comparing(InstanceStore.InstanceRecord::createdAt))
                 .toList();
 
-        List<ReliabilityModel.RunRecord> runs = instances.stream()
-                .map(i -> new ReliabilityModel.RunRecord(i.runId(), i.state().name(), i.createdAt(), i.terminalAt()))
+        List<ReliabilityModel.RunRecord> runs = headers.stream()
+                .map(r -> new ReliabilityModel.RunRecord(r.runId(), r.state(), r.createdAt(), r.terminalAt()))
                 .toList();
 
-        List<ReliabilityModel.TransitionRecord> transitions = instances.stream()
-                .flatMap(i -> journal.findByRun(i.runId()).stream())
+        List<ReliabilityModel.TransitionRecord> transitions = headers.stream()
+                .flatMap(r -> journal.findByRun(r.runId()).stream())
                 .map(ReliabilityMetricsController::toRecord)
                 .toList();
 
-        return calculator.compute(runs, transitions, windowOf(instances));
+        return calculator.compute(runs, transitions, windowOf(headers));
     }
 
     private static ReliabilityModel.TransitionRecord toRecord(TransitionEvent event) {
@@ -63,13 +57,13 @@ public class ReliabilityMetricsController {
                 event.action(), event.timestamp(), event.reason());
     }
 
-    private static String windowOf(List<WorkflowInstance> instances) {
-        if (instances.isEmpty()) {
+    private static String windowOf(List<InstanceStore.InstanceRecord> headers) {
+        if (headers.isEmpty()) {
             return "no runs";
         }
-        Instant from = instances.get(0).createdAt();
-        Instant to = instances.stream()
-                .map(i -> i.terminalAt() == null ? Instant.now() : i.terminalAt())
+        Instant from = headers.get(0).createdAt();
+        Instant to = headers.stream()
+                .map(r -> r.terminalAt() == null ? Instant.now() : r.terminalAt())
                 .max(Comparator.naturalOrder())
                 .orElse(from);
         return from + "/" + to;

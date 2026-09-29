@@ -35,6 +35,7 @@ class WorkflowEngineTest {
     private InMemoryStores.MemoryJournal journal;
     private InMemoryStores.MemoryApprovalStore approvals;
     private InMemoryStores.MemoryInstanceStore instances;
+    private InMemoryStores.MemoryArtifactStore artifacts;
     private InMemoryStores.MemoryAuditSink audit;
     private WorkflowEngine engine;
 
@@ -43,6 +44,7 @@ class WorkflowEngineTest {
         journal = new InMemoryStores.MemoryJournal();
         approvals = new InMemoryStores.MemoryApprovalStore();
         instances = new InMemoryStores.MemoryInstanceStore();
+        artifacts = new InMemoryStores.MemoryArtifactStore();
         audit = new InMemoryStores.MemoryAuditSink();
     }
 
@@ -58,7 +60,8 @@ class WorkflowEngineTest {
     }
 
     private WorkflowEngine engineWith(List<StageAgent> agents, EngineSettings settings) {
-        engine = new WorkflowEngine(agents, journal, approvals, instances, audit, Clock.systemUTC(), settings);
+        engine = new WorkflowEngine(agents, List.of(), journal, approvals, instances, artifacts, audit,
+                Clock.systemUTC(), settings);
         return engine;
     }
 
@@ -397,11 +400,7 @@ class WorkflowEngineTest {
                 .hasMessageContaining("rationale");
     }
 
-    /**
-     * The negative test the whole approval model rests on: when the approval window elapses, the
-     * gate safe-stops. There is no configuration, flag or timer that turns elapsed time into
-     * consent.
-     */
+    /** The negative test the whole approval model rests on: when the approval window elapses, the gate safe-stops. */
     @Test
     void an_elapsed_approval_window_safe_stops_and_never_approves() {
         WorkflowEngine engine = engineWith(
@@ -489,11 +488,7 @@ class WorkflowEngineTest {
         assertThat(WorkflowEngine.downstreamClosure(definition, "unrelated")).isEmpty();
     }
 
-    /**
-     * A gate produces no artifact. If lineage stopped at the direct dependencies, everything after
-     * a release gate would have an empty provenance chain and the audit story would end one step
-     * from where it started.
-     */
+    /** A gate produces no artifact. */
     @Test
     void provenance_survives_a_gate_that_produces_no_artifact() {
         TestAgents.RecordingAgent agent = new TestAgents.RecordingAgent("TestAgent");
@@ -533,11 +528,7 @@ class WorkflowEngineTest {
                 .doesNotContain(AuditActions.EXIT_GATE_FAILED);
     }
 
-    /**
-     * The exit gate is what stops an agent's claim of success from being taken at face value.
-     * Without it a stage could silently produce nothing and every downstream node would work from
-     * a gap that nothing reported.
-     */
+    /** The exit gate is what stops an agent's claim of success from being taken at face value. */
     @Test
     void a_node_that_reports_success_without_its_declared_artifact_fails_the_exit_gate() {
         NodeDefinition liar = new NodeDefinition("liar", "Empty", List.of(), JoinType.ALL, false, null,

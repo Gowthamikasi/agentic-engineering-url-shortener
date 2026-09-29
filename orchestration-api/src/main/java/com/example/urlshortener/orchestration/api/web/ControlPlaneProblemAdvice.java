@@ -31,7 +31,7 @@ public class ControlPlaneProblemAdvice {
                 e.getMessage(), "STATE_CONFLICT");
     }
 
-    /** The engine refused a transition. Surfaced as a 409 naming it, rather than an opaque 500. */
+    /** The engine refused a transition. */
     @ExceptionHandler(NodeStateMachine.IllegalTransitionException.class)
     public ProblemDetail onIllegalTransition(NodeStateMachine.IllegalTransitionException e) {
         return problem(HttpStatus.CONFLICT, "Illegal state transition", e.getMessage(), "ILLEGAL_TRANSITION");

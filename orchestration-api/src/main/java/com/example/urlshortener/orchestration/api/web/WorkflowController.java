@@ -10,6 +10,7 @@ import com.example.urlshortener.orchestration.model.NodeState;
 import com.example.urlshortener.orchestration.model.TransitionEvent;
 import com.example.urlshortener.orchestration.model.WorkflowDefinition;
 import com.example.urlshortener.orchestration.model.WorkflowInstance;
+import com.example.urlshortener.orchestration.port.InstanceStore;
 import com.example.urlshortener.orchestration.port.Journal;
 import com.example.urlshortener.telemetry.audit.AuditEvent;
 import com.example.urlshortener.telemetry.audit.AuditHasher;
@@ -60,12 +61,7 @@ public class WorkflowController {
         this.json = json;
     }
 
-    /**
-     * Starts a run.
-     *
-     * <p>waitMs makes the call block until the run settles, which the demo scripts use so a
-     * reviewer sees a finished run instead of polling. It does not change how the run executes.
-     */
+    /** Starts a run. */
     @PostMapping
     public ResponseEntity<WorkflowDto.RunSummary> start(
             @Valid @RequestBody WorkflowDto.StartRunRequest request,
@@ -95,9 +91,10 @@ public class WorkflowController {
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(summaryOf(instance));
     }
 
+    /** Every run ever recorded, read from the database so a restart does not hide them. */
     @GetMapping
     public List<WorkflowDto.RunSummary> list() {
-        return engine.all().stream().map(this::summaryOf).toList();
+        return engine.headers().stream().map(WorkflowController::summaryOf).toList();
     }
 
     @GetMapping("/{runId}")
@@ -158,12 +155,7 @@ public class WorkflowController {
                 .toList();
     }
 
-    /**
-     * Records a human decision.
-     *
-     * <p>This is the only way a gate moves forward. Nothing approves on the caller's behalf and
-     * no timer does it either (REQ-D-010).
-     */
+    /** Records a human decision. */
     @PostMapping("/{runId}/gates/{gateId}/decision")
     public ResponseEntity<WorkflowDto.DecisionView> decide(
             @PathVariable String runId,
@@ -207,12 +199,7 @@ public class WorkflowController {
         return require(runId).artifacts().stream().map(this::artifactView).toList();
     }
 
-    /**
-     * Walks an artifact back to the requirement it came from.
-     *
-     * <p>Each step names the node that produced it, what it consumed, and the decisions in
-     * force at the time.
-     */
+    /** Walks an artifact back to the requirement it came from. */
     @GetMapping("/{runId}/lineage/{artifactId}")
     public WorkflowDto.LineageResponse lineage(@PathVariable String runId, @PathVariable String artifactId) {
         WorkflowInstance instance = require(runId);
@@ -283,6 +270,16 @@ public class WorkflowController {
     private WorkflowInstance require(String runId) {
         return engine.find(runId)
                 .orElseThrow(() -> new IllegalArgumentException("No such run: " + runId));
+    }
+
+    private static WorkflowDto.RunSummary summaryOf(InstanceStore.InstanceRecord record) {
+        String base = "/api/v1/workflows/" + record.runId();
+        return new WorkflowDto.RunSummary(record.runId(), record.definitionName(),
+                record.definitionVersion(), record.policyVersion(), record.state(),
+                record.terminalOutcome(), record.createdAt(), record.terminalAt(),
+                Map.of("self", base, "graph", base + "/graph", "audit", base + "/audit",
+                        "history", base + "/history", "gates", base + "/gates",
+                        "artifacts", base + "/artifacts"));
     }
 
     private WorkflowDto.RunSummary summaryOf(WorkflowInstance instance) {

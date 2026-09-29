@@ -6,12 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-/**
- * Sweeps gates that have been waiting too long.
- *
- * <p>All it can do is safe-stop a run. There is no setting that lets elapsed time approve
- * anything (REQ-D-010), and a test checks that.
- */
+/** Sweeps gates that have been waiting too long. */
 @Component
 public class ApprovalTimeoutScheduler {
 

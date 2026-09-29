@@ -2,7 +2,7 @@ package com.example.urlshortener.telemetry.audit;
 
 import java.util.List;
 
-/** Append-only audit store. There is no update or delete here, on purpose. */
+/** Append-only audit store. */
 public interface AuditSink {
 
     /** Seals the event into the chain for its run and persists it. */

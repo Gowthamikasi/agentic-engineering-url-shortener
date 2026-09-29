@@ -7,11 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * The published schema, tested as a gate rather than as documentation.
- *
- * <p>Whatever the schema rejects, the loader has to refuse, so the two cannot drift apart.
- */
+/** The published schema, tested as a gate rather than as documentation. */
 class WorkflowDefinitionSchemaTest {
 
     private final WorkflowDefinitionLoader loader = new WorkflowDefinitionLoader();

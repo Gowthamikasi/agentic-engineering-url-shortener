@@ -2,12 +2,7 @@ package com.example.urlshortener.policy;
 
 import java.time.Instant;
 
-/**
- * An approved deviation from a mandatory rule (REQ-D-006).
- *
- * <p>Every field is here because leaving it out is how exceptions become permanent. An expired
- * exception is re-evaluated as a plain FAIL.
- */
+/** An approved deviation from a mandatory rule (REQ-D-006). */
 public record PolicyException(
         String id,
         String policyId,

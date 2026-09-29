@@ -1,6 +1,6 @@
 package com.example.urlshortener.orchestration.model;
 
-/** States of a whole run. SUSPENDED and AWAITING_CLARIFICATION can be resumed; the rest are final. */
+/** States of a whole run. */
 public enum InstanceState {
 
     CREATED,

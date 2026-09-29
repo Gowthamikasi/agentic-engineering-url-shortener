@@ -11,7 +11,7 @@ public final class AuditHasher {
     private AuditHasher() {
     }
 
-    /** Canonical serialisation of the fields the chain commits to. Field order is part of the contract. */
+    /** Canonical serialisation of the fields the chain commits to. */
     public static String canonicalPayload(AuditEvent e) {
         return String.join("\u001f",
                 nullSafe(e.runId()),

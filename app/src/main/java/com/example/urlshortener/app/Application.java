@@ -6,12 +6,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-/**
- * The single process hosting both planes.
- *
- * <p>They share a JVM and a database but nothing above that: neither plane's modules depend on
- * the other's, and ArchitectureBoundaryTest fails the build if that changes.
- */
+/** The single process hosting both planes. */
 @SpringBootApplication(scanBasePackages = {
         "com.example.urlshortener.app",
         "com.example.urlshortener.api",

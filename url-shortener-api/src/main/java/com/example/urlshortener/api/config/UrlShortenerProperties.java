@@ -47,7 +47,7 @@ public class UrlShortenerProperties {
 
     public static class ShortCode {
 
-        /** Alphabet for new codes. Lookup always accepts every known alphabet. */
+        /** Alphabet for new codes. */
         private String alphabet = "BASE62";
         private int length = 7;
         /** How many collisions to tolerate before giving up, rather than looping forever. */
@@ -80,8 +80,7 @@ public class UrlShortenerProperties {
 
     public static class Validation {
 
-        /** Resolve target hosts and check them against the private-address denylist.
-         *  Only switched off in tests, which must not depend on DNS. */
+        /** Resolve target hosts and check them against the private-address denylist. */
         private boolean enforceAddressChecks = true;
 
         public boolean isEnforceAddressChecks() {
@@ -126,7 +125,7 @@ public class UrlShortenerProperties {
         }
     }
 
-    /** One configured API key. Only the hash is held, never the key. */
+    /** One configured API key. */
     public static class ApiKey {
 
         private String id;

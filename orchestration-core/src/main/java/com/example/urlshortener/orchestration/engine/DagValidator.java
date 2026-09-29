@@ -12,12 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Checks a workflow definition is a valid DAG before anything runs.
- *
- * <p>A cycle found at runtime looks exactly like a stalled scheduler: the ready set just stays
- * empty. Catching it at load gives a real error message instead.
- */
+/** Checks a workflow definition is a valid DAG before anything runs. */
 public final class DagValidator {
 
     /** Thrown when a definition is not a valid DAG. */

@@ -33,7 +33,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 
-/** Application-plane link management. Every route here requires an API key. */
+/** Application-plane link management. */
 @RestController
 @RequestMapping("/api/v1/links")
 public class LinksController {

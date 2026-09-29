@@ -7,12 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * A versioned workflow graph.
- *
- * <p>It is data rather than code, so the governed path can be read without reading the engine
- * and replanning can produce version N+1 as a diffable file.
- */
+/** A versioned workflow graph. */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record WorkflowDefinition(String name, long version, String description, List<NodeDefinition> nodes) {
 

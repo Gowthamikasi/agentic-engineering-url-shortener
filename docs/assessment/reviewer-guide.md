@@ -18,7 +18,7 @@ If you only have five minutes, run items 1, 12 and 17.
 
 | # | Claim | Command | Expected |
 |---|---|---|---|
-| 1 | Clean clone builds and all tests pass | `./mvnw verify` | `BUILD SUCCESS`, 181 unit/contract tests plus 16 integration tests, 0 failures |
+| 1 | Clean clone builds and all tests pass | `./mvnw verify` | `BUILD SUCCESS`, 189 unit/contract tests plus 16 integration tests, 0 failures |
 | 2 | The two planes do not depend on each other | `./mvnw -pl app test -Dtest=ArchitectureBoundaryTest` | 7 rules pass. Break it: add an `orchestration` import to `url-shortener-api` and watch the build fail |
 | 3 | The domain has no framework coupling | `grep -rl "org.springframework\|jakarta.persistence" url-shortener-domain/src/main` | no output |
 | 4 | The workflow is data, not code | `cat orchestration-core/src/main/resources/workflows/sdlc.v1.json` | 18 nodes with dependencies, gates, timeouts, retry budgets and recovery modes |
@@ -62,6 +62,8 @@ If you only have five minutes, run items 1, 12 and 17.
 | 22 | The audit chain verifies | `curl -i -H "$K" localhost:8080/api/v1/workflows/<runId>/audit` | header `X-Audit-Chain: intact`. Edit a row in the database and it reports the row where it breaks |
 | 23 | A mandatory policy failure blocks release | `./mvnw -pl policy-core test` | `a_mandatory_failure_blocks_release_and_names_the_rule`; and an expired exception is re-evaluated as FAIL, not waived |
 | 24 | A gap is not reported as a pass | greenfield `artifacts.json`, `PolicyEvaluation` | `LIC-001: EXCEPTION_REQUESTED` — no licence report was produced, and it says so rather than passing |
+| 24a | **A finished run survives a restart** | run the demo, stop the process, start it again, then re-request `/{runId}`, `/artifacts`, `/graph`, `/gates` and `/lineage` | all `200`, with the same artifacts and decisions. Metrics still report every run |
+| 24b | Gaps are not dressed up as passes | any bundle's `PolicyEvaluation` | `SEC-004`, `TEST-001` and `LIC-001` all `EXCEPTION_REQUESTED`: no scanner ran, no red-then-green was observed, no licence report was produced |
 | 25 | **MTTR excludes unrecovered failures** | `curl -H "$K" localhost:8080/api/v1/metrics/reliability` | `mttrMs` over recovered failures only; `unrecoveredFailureEvents` listed separately; every response `"dataClass": "DEMONSTRATION"` |
 
 ---

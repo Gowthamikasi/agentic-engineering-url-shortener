@@ -17,12 +17,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.Optional;
 
-/**
- * Checks X-Api-Key and the scope each protected route needs.
- *
- * <p>The redirect endpoint is public, because that is the one surface a shortener has to
- * expose. Everything else needs a key.
- */
+/** Checks X-Api-Key and the scope each protected route needs. */
 public class ApiKeyFilter extends OncePerRequestFilter {
 
     public static final String HEADER = "X-Api-Key";

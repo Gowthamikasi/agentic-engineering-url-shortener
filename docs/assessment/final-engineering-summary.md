@@ -5,7 +5,7 @@
 | Deliverable | Agentic Software Engineering System — URL Shortener |
 | Date | 2026-09-29 |
 | Release decision | **READY WITH ACCEPTED LIMITATIONS** (§21) |
-| Tests | 197 — 181 unit/contract plus 16 integration — all passing |
+| Tests | 205 — 189 unit/contract plus 16 integration — all passing |
 | Scenarios executed | 3 of 3, all `COMPLETED` |
 
 Everything reported here was produced by executing the system. Where something was not executed,
@@ -31,7 +31,7 @@ Two planes in one process, sharing nothing above the database:
   rollback and compensation, safe stop, resume, dynamic replanning, versioned policy guardrails, a
   hash-chained audit trail, and reliability metrics including MTTR.
 
-Twelve Maven modules, 197 tests, no runtime dependencies.
+Twelve Maven modules, 205 tests, no runtime dependencies.
 
 ## 3. Requirement interpretation
 
@@ -147,7 +147,7 @@ none. Outcome `COMPLETED` at v2, 65 audit rows.
 
 ## 13. Testing approach
 
-197 tests, no Docker, about three minutes. Unit tests for the domain; `@DataJpaTest` slices for
+205 tests, no Docker, about three minutes. Unit tests for the domain; `@DataJpaTest` slices for
 persistence including a concurrent-collision test; `MockMvc` contract tests for the full API;
 behavioural tests for the engine; ArchUnit for the module boundaries.
 
@@ -164,12 +164,12 @@ the audit chain afterwards.
 ## 14. Executed results
 
 ```
-url-shortener-domain           37    orchestration-core             59
+url-shortener-domain           37    orchestration-core             67
 url-shortener-infrastructure    8    orchestration-agents           16
 url-shortener-api              24    app (ArchUnit)                  7
 telemetry                      12    app (integration, over HTTP)   16
 policy-core                    18    ─────────────────────────────────
-                                     TOTAL                         197
+                                     TOTAL                         205
 ```
 
 All passing. Reproduce with `./mvnw verify`.
@@ -244,17 +244,18 @@ Stated plainly, because a prototype that overclaims is worse than one that is mo
 
 1. **Agents are deterministic, not LLM-backed** (ASM-001, EXC-004). `StageAgent` is the seam.
 2. **`implement` does not write code.** It records a rollbackable change set.
-3. **No dependency vulnerability scanner, no secret scanner, no SBOM.** Reported as a gap, raising
-   an exception request.
-4. **TDD evidence is supplied as a run input, not observed.** Absent, TEST-001 raises an exception
-   request. The engine cannot watch a test go red and then green because it does not write the code.
+3. **No dependency vulnerability scanner, no secret scanner, no SBOM.** Reported as a gap raising
+   an exception request. The demo supplies no scan results, so every bundle shows SEC-004 as
+   `EXCEPTION_REQUESTED` rather than a pass.
+4. **TDD evidence can only be supplied as a run input, never observed**, because the engine does
+   not write the code. The demo supplies none, so TEST-001 shows as `EXCEPTION_REQUESTED`.
 5. **The recorded approver is asserted, not authenticated** (ADR-015).
 6. **The audit chain is tamper-evident, not tamper-proof.** Database access could recompute it.
 7. **Single process, single node.** Rate-limit buckets and the click queue are process-local; both
    planes share a JVM and a datasource.
-8. **Live runs are held in memory** alongside the journal. The journal is durable and is the source
-   of truth, but automatic rehydration of in-flight runs after a restart is **not implemented** —
-   the durable state exists, the rebuild-on-boot path does not.
+8. **Runs that were mid-flight when the process stopped are not resumed.** Finished runs rebuild
+   from the database the first time they are requested, so every endpoint answers after a restart,
+   but nothing picks interrupted work back up.
 9. **DNS can change after creation**, so a host validated as public could later resolve privately.
 10. **Reliability figures come from three runs on one machine**, labelled `DEMONSTRATION`.
 11. **H2 concurrency differs from PostgreSQL**, so the concurrency test proves the code, not the engine.
@@ -293,6 +294,20 @@ Included because a summary with no failures in it is not a summary of real work:
 - **The test-runner agent read the report of the test that was running it.** During the integration
   suite it picked up the in-flight Failsafe XML, parsed it as garbage, and failed the node. It now
   reads Surefire output only — a workflow grading the test that launched it is circular anyway.
+- **A restart made most of a finished run unreadable.** The API served runs from an in-memory map,
+  so after a restart `/{runId}`, `/artifacts`, `/graph` and `/gates` returned 404 and the metrics
+  reported zero runs, while the docs claimed the opposite. Artifacts and facts are now persisted, a
+  finished run is rebuilt from the database on demand, and metrics read the stored headers.
+- **Artifact ids are only unique inside a run.** Every run mints an `ingest:RawRequirement:v1`, so
+  using that as the artifact table's primary key let each run overwrite the last one's rows. Caught
+  by querying the database rather than trusting the endpoint, which had been answering from memory.
+- **The demo was feeding the system evidence that did not exist**: a clean dependency scan and a
+  TDD reference pointing at files that were never written. For a project whose argument is "a gap is
+  never reported as a pass", that was the sharpest contradiction in the repository. Both inputs are
+  gone, and the shipped bundles now show three honest exception requests per run.
+- **The application plane was answering for the control plane.** `ProblemDetailAdvice` had no
+  `basePackages`, so a blank rationale on a governance endpoint came back as `URL_MALFORMED`. The
+  e2e test missed it by asserting only the status code.
 - **Lineage stopped at the release gate.** A gate produces no artifact, so walking only the direct
   dependencies left every downstream artifact with an empty provenance list, which made a claim in
   the reviewer guide false. Artifact-less dependencies are now looked through.
@@ -301,14 +316,14 @@ Included because a summary with no failures in it is not a summary of real work:
 
 **READY WITH ACCEPTED LIMITATIONS.**
 
-Ready because: the prototype builds and runs from a clean clone with only a JDK; 197 tests pass;
+Ready because: the prototype builds and runs from a clean clone with only a JDK; 205 tests pass;
 all three scenarios executed end to end and are materially different; every governance guarantee
 claimed is enforced by the state machine and covered by a negative test; all mandatory policies pass
 on every run; and the evidence is captured output rather than written examples.
 
 With accepted limitations because of §19 — chiefly that agents are deterministic rather than
 LLM-backed, that `implement` does not write code, that no vulnerability scanner runs, and that
-in-flight runs are not rehydrated after a restart. Each is disclosed in the artifact that would
-otherwise imply the opposite.
+interrupted runs are not resumed. Each is disclosed in the artifact that would otherwise imply the
+opposite.
 
 Not ready for production, and nothing here claims to be.

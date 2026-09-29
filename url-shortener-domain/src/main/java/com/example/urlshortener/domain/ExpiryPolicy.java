@@ -4,12 +4,7 @@ import com.example.urlshortener.domain.model.ShortLink;
 
 import java.time.Instant;
 
-/**
- * Expiry is an optional absolute UTC instant and there is no default (ASM-004).
- *
- * <p>An expired link is Gone rather than NotFound, so a caller can tell "never existed" from
- * "existed and lapsed".
- */
+/** Expiry is an optional absolute UTC instant and there is no default (ASM-004). */
 public final class ExpiryPolicy {
 
     private ExpiryPolicy() {

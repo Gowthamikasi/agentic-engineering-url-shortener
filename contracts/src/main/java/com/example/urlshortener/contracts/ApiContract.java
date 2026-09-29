@@ -1,14 +1,6 @@
 package com.example.urlshortener.contracts;
 
-/**
- * Published contract versions, and where the contract files live.
- *
- * <p>Here rather than in either plane, because both reference them and neither may depend on
- * the other. Keeping the version in one place also means bumping it is a visible edit.
- *
- * <p>Versioning: an additive optional field is a minor bump; a removal, rename or type change
- * is a major bump behind a new path prefix.
- */
+/** Published contract versions, and where the contract files live. */
 public final class ApiContract {
 
     /** Sent as the API-Version header on application-plane responses. */

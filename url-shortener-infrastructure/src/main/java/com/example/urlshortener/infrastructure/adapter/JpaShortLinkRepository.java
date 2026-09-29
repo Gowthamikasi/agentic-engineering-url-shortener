@@ -38,16 +38,7 @@ public class JpaShortLinkRepository implements ShortLinkRepository {
         return jpa.existsById(code);
     }
 
-    /**
-     * Inserts only when the code is free.
-     *
-     * <p>Uses persist rather than JpaRepository.save: the entity has an assigned string id, so
-     * save would treat it as detached and merge it, overwriting an existing link instead of
-     * reporting the collision.
-     *
-     * <p>REQUIRES_NEW keeps a lost race out of the caller's transaction, since the caller's
-     * response to a collision is simply to try another code.
-     */
+    /** Inserts only when the code is free. */
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean saveIfAbsent(ShortLink link) {

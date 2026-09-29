@@ -6,12 +6,7 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * The transitions that are not allowed.
- *
- * <p>These are the negative tests behind the governance claims: approving without a decision,
- * retrying past the budget and reviving a failed node are simply not expressible.
- */
+/** The transitions that are not allowed. */
 class NodeStateMachineTest {
 
     @Test

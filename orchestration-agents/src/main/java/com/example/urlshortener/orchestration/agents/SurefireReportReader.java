@@ -11,15 +11,7 @@ import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-/**
- * Reads the Surefire XML the build produced.
- *
- * <p>The test-runner agent reports these numbers rather than inventing them. No matching
- * report means the node fails, instead of quietly reporting a green run.
- *
- * <p>Failsafe output is skipped on purpose: it can be the end-to-end run asking the
- * question, and a half-written report parses as garbage.
- */
+/** Reads the Surefire XML the build produced. */
 public final class SurefireReportReader {
 
     /** Totals across the reports that matched. */

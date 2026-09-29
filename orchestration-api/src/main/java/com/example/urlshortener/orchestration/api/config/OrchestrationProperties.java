@@ -18,7 +18,7 @@ public class OrchestrationProperties {
     /** How many node attempts may run concurrently. */
     private int maxParallelism = 4;
 
-    /** How long a gate waits before safe-stopping. Never before approving (REQ-D-010). */
+    /** How long a gate waits before safe-stopping. */
     private Duration approvalTimeout = Duration.ofHours(24);
 
     /** Where the test-runner agent looks for Surefire and Failsafe reports. */

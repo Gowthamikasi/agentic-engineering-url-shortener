@@ -20,13 +20,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.net.URI;
 import java.util.stream.Collectors;
 
-/**
- * Turns domain failures into RFC 9457 problem responses.
- *
- * <p>The status codes mean something a caller can act on: 404 never existed, 410 existed
- * and lapsed, 422 parsed but was refused, 409 an Idempotency-Key reused with new content.
- */
-@RestControllerAdvice
+/** Turns domain failures into RFC 9457 problem responses. */
+@RestControllerAdvice(basePackages = "com.example.urlshortener.api")
 public class ProblemDetailAdvice {
 
     private static final Logger log = LoggerFactory.getLogger(ProblemDetailAdvice.class);

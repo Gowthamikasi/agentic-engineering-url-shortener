@@ -1,11 +1,6 @@
 package com.example.urlshortener.telemetry.audit;
 
-/**
- * The closed set of audited actions.
- *
- * <p>Constants rather than free text, so the reliability calculator can work out MTTR from the
- * journal instead of someone typing a number in.
- */
+/** The closed set of audited actions. */
 public final class AuditActions {
 
     public static final String WORKFLOW_CREATED = "WorkflowCreated";

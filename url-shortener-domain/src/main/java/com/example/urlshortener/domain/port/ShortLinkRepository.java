@@ -4,7 +4,7 @@ import com.example.urlshortener.domain.model.ShortLink;
 
 import java.util.Optional;
 
-/** Outbound port for short-link persistence. Implemented in url-shortener-infrastructure. */
+/** Outbound port for short-link persistence. */
 public interface ShortLinkRepository {
 
     Optional<ShortLink> findByCode(String code);

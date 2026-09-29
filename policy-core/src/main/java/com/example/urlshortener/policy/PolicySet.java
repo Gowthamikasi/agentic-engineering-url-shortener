@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.List;
 
-/** A versioned set of guardrails. Every run records the version it was checked against. */
+/** A versioned set of guardrails. */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record PolicySet(String version, String description, List<PolicyRule> rules) {
 

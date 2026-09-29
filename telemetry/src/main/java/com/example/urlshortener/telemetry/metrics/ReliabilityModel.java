@@ -5,12 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
 import java.util.List;
 
-/**
- * The read model the reliability calculator works from.
- *
- * <p>These types let telemetry compute MTTR without depending on the engine: the control plane
- * projects its journal into them. Everything here comes from stored rows.
- */
+/** The read model the reliability calculator works from. */
 public final class ReliabilityModel {
 
     private ReliabilityModel() {

@@ -1,8 +1,10 @@
 package com.example.urlshortener.orchestration.engine;
 
+import com.example.urlshortener.orchestration.model.Artifact;
 import com.example.urlshortener.orchestration.model.Decision;
 import com.example.urlshortener.orchestration.model.TransitionEvent;
 import com.example.urlshortener.orchestration.port.ApprovalStore;
+import com.example.urlshortener.orchestration.port.ArtifactStore;
 import com.example.urlshortener.orchestration.port.InstanceStore;
 import com.example.urlshortener.orchestration.port.Journal;
 import com.example.urlshortener.telemetry.audit.AuditEvent;
@@ -79,6 +81,21 @@ final class InMemoryStores {
         @Override
         public List<Decision> findByRun(String runId) {
             return List.copyOf(decisions);
+        }
+    }
+
+    static final class MemoryArtifactStore implements ArtifactStore {
+
+        private final List<Artifact> artifacts = new CopyOnWriteArrayList<>();
+
+        @Override
+        public void save(String runId, Artifact artifact) {
+            artifacts.add(artifact);
+        }
+
+        @Override
+        public List<Artifact> findByRun(String runId) {
+            return List.copyOf(artifacts);
         }
     }
 
