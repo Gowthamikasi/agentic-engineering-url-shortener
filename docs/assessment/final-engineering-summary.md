@@ -100,7 +100,7 @@ a `FAIL`.
 
 ## 9. Scenario A — greenfield
 
-Run `run_1a0ed63044f_1` — [evidence](../scenarios/greenfield/).
+Run captured in [`docs/scenarios/greenfield/`](../scenarios/greenfield/); the run id changes on every execution.
 
 Optional `expiresAt`. All five quality checks passed, so **the clarification gate was skipped with
 its reasons recorded** (REQ-D-009). A transient failure injected into `contract-tests` was retried
@@ -109,7 +109,7 @@ licence report. Release approved. Outcome `COMPLETED`, 55 audit rows.
 
 ## 10. Scenario B — brownfield
 
-Run `run_1a0ed631050_2` — [evidence](../scenarios/brownfield/).
+Run captured in [`docs/scenarios/brownfield/`](../scenarios/brownfield/).
 
 Base58 codes with legacy base62 codes still resolving. The **impact-analysis gate was reached
 before any change**, and CC-003 would have blocked the release had the impact artifact been absent.
@@ -123,7 +123,7 @@ ADR-017 supersedes ADR-004. Policy: `PASS:11 FAIL:0 EXC:1 NA:1`. Outcome `COMPLE
 
 ## 11. Scenario C — ambiguous
 
-Run `run_1a0ed631846_3` — [evidence](../scenarios/ambiguous/).
+Run captured in [`docs/scenarios/ambiguous/`](../scenarios/ambiguous/).
 
 *"Links should expire after a while and we should show popular links."* The quality agent found
 four ambiguities and the run **genuinely stopped** at `AWAITING_CLARIFICATION` with `implement` at
@@ -167,7 +167,8 @@ All passing. Reproduce with `./mvnw verify`.
 
 ## 15. Reliability metrics
 
-From three executed runs, derived from the journal on every request:
+From the three runs captured in [`reliability-metrics.json`](../scenarios/reliability-metrics.json),
+derived from the journal on every request:
 
 | Metric | Value |
 |---|---|
@@ -175,14 +176,21 @@ From three executed runs, derived from the journal on every request:
 | Node attempts | 44, of which 1 retry (frequency 0.023) |
 | Failure events | 2, both recovered, 0 unrecovered |
 | Rollbacks / compensations | 1 / 0 |
-| **MTTR** | **631 ms** over 2 recovered failures (1262 ms total) |
-| End-to-end latency | p50 1148 ms, p95 2060 ms |
+| **MTTR** | **883 ms** over 2 recovered failures (1766 ms total) |
+| Recovery detail | `contract-tests` recovered by Retry in 1079 ms; `regression` by Rollback in 687 ms |
+| End-to-end latency | p50 1409 ms, p95 2562 ms |
 | Data class | `DEMONSTRATION` |
 
 MTTR covers recovered failures only; unrecovered ones are reported separately. Folding them
 together would make MTTR look best exactly when the system behaved worst.
 
-**These are three scripted runs on one laptop. They are not production statistics**, which is why
+**The counts are reproducible; the durations are not.** Attempts, retries, rollbacks and the
+recovered/unrecovered split come out the same on every execution, because they follow from the
+declared faults and the engine's rules. The millisecond figures are wall-clock on one laptop and
+will differ on every run — quoting them as if they were constants would be the same category of
+error as quoting them as production statistics.
+
+**These are three scripted runs on one machine. They are not production statistics**, which is why
 every response says so.
 
 ## 16. Risks

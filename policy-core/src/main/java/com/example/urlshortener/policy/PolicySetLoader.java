@@ -1,5 +1,6 @@
 package com.example.urlshortener.policy;
 
+import com.example.urlshortener.contracts.ApiContract;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -17,7 +18,7 @@ import java.nio.file.Path;
  */
 public final class PolicySetLoader {
 
-    private static final String CLASSPATH_TEMPLATE = "/policies/policy-set.v%s.json";
+    private static final String CLASSPATH_TEMPLATE = ApiContract.POLICY_SET_TEMPLATE;
 
     private final ObjectMapper mapper;
 

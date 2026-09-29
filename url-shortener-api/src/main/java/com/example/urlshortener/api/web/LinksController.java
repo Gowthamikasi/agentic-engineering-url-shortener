@@ -8,6 +8,7 @@ import com.example.urlshortener.api.security.ApiKeyRegistry;
 import com.example.urlshortener.api.web.dto.CreateLinkRequest;
 import com.example.urlshortener.api.web.dto.LinkResponse;
 import com.example.urlshortener.api.web.dto.StatsResponse;
+import com.example.urlshortener.contracts.ApiContract;
 import com.example.urlshortener.domain.ErrorCodes;
 import com.example.urlshortener.domain.error.InvalidRequestException;
 import com.example.urlshortener.domain.error.LinkNotFoundException;
@@ -37,8 +38,8 @@ import java.time.format.DateTimeParseException;
 @RequestMapping("/api/v1/links")
 public class LinksController {
 
-    /** Emitted on every response so a consumer can detect a contract version change. */
-    public static final String API_VERSION = "1.1.0";
+    /** Declared once, in the contracts module, so both planes agree on the published version. */
+    public static final String API_VERSION = ApiContract.VERSION;
 
     private final CreateLinkService createLink;
     private final LinkQueryService queries;
@@ -70,7 +71,7 @@ public class LinksController {
         // A replayed idempotent request is not a new creation, so it answers 200 rather than 201.
         HttpStatus status = outcome.replayed() ? HttpStatus.OK : HttpStatus.CREATED;
         return ResponseEntity.status(status)
-                .header("API-Version", API_VERSION)
+                .header(ApiContract.HEADER, API_VERSION)
                 .location(URI.create("/api/v1/links/" + outcome.link().code()))
                 .body(body);
     }
@@ -79,7 +80,7 @@ public class LinksController {
     public ResponseEntity<LinkResponse> get(@PathVariable String code) {
         ShortLink link = queries.find(code);
         return ResponseEntity.ok()
-                .header("API-Version", API_VERSION)
+                .header(ApiContract.HEADER, API_VERSION)
                 .body(LinkResponse.of(link, properties.getBaseUrl()));
     }
 
@@ -98,7 +99,7 @@ public class LinksController {
         }
 
         return ResponseEntity.ok()
-                .header("API-Version", API_VERSION)
+                .header(ApiContract.HEADER, API_VERSION)
                 .body(StatsResponse.of(queries.stats(code, fromInstant, toInstant)));
     }
 
@@ -107,7 +108,7 @@ public class LinksController {
         if (!queries.delete(code)) {
             throw new LinkNotFoundException(code);
         }
-        return ResponseEntity.noContent().header("API-Version", API_VERSION).build();
+        return ResponseEntity.noContent().header(ApiContract.HEADER, API_VERSION).build();
     }
 
     private static Instant parseExpiry(String raw) {

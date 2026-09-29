@@ -1,5 +1,6 @@
 package com.example.urlshortener.orchestration.api.config;
 
+import com.example.urlshortener.contracts.ApiContract;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.time.Duration;
@@ -9,10 +10,10 @@ import java.time.Duration;
 public class OrchestrationProperties {
 
     /** Classpath location of the workflow definition to run. */
-    private String definitionResource = "/workflows/sdlc.v1.json";
+    private String definitionResource = ApiContract.WORKFLOW_DEFINITION_RESOURCE;
 
     /** Policy set version every run is stamped with (REQ-D-003). */
-    private String policyVersion = "1.0.0";
+    private String policyVersion = ApiContract.DEFAULT_POLICY_VERSION;
 
     /** How many node attempts may run concurrently. */
     private int maxParallelism = 4;
