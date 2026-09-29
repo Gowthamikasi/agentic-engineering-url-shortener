@@ -1,0 +1,182 @@
+{
+  "name": "sdlc",
+  "version": 1,
+  "description": "Governed SDLC workflow: requirement intake through release readiness, with human gates, parallel verification, and policy evaluation.",
+  "nodes": [
+    {
+      "id": "ingest",
+      "agentType": "RequirementIngestAgent",
+      "dependsOn": [],
+      "timeoutMs": 15000,
+      "maxAttempts": 2,
+      "recoveryMode": "ROLLBACKABLE",
+      "description": "Accept the raw requirement and classify it as greenfield, brownfield or unclassified."
+    },
+    {
+      "id": "normalize",
+      "agentType": "RequirementNormalizeAgent",
+      "dependsOn": ["ingest"],
+      "timeoutMs": 15000,
+      "maxAttempts": 2,
+      "recoveryMode": "ROLLBACKABLE",
+      "description": "Restate the requirement in testable form, folding in any clarification decision already recorded."
+    },
+    {
+      "id": "quality-check",
+      "agentType": "RequirementQualityAgent",
+      "dependsOn": ["normalize"],
+      "timeoutMs": 30000,
+      "maxAttempts": 1,
+      "recoveryMode": "NONE",
+      "description": "Score completeness, consistency, testability, policy boundary and architecture boundary; decide whether clarification is required."
+    },
+    {
+      "id": "clarify",
+      "agentType": "HumanGateAgent",
+      "dependsOn": ["quality-check"],
+      "requiresApproval": true,
+      "gateId": "clarify",
+      "branchCondition": "#facts['quality.decision'] == 'ClarificationRequired'",
+      "supersedes": "normalize",
+      "recoveryMode": "NONE",
+      "description": "Human resolution of material ambiguity. The decision supersedes the normalized requirement, which invalidates and regenerates everything downstream of it."
+    },
+    {
+      "id": "impact-analysis",
+      "agentType": "ImpactAnalysisAgent",
+      "dependsOn": ["quality-check", "clarify"],
+      "branchCondition": "#input['kind'] == 'Brownfield'",
+      "timeoutMs": 30000,
+      "maxAttempts": 2,
+      "recoveryMode": "ROLLBACKABLE",
+      "description": "For a brownfield change: impacted modules, interfaces, data, tests, docs, rollout and rollback."
+    },
+    {
+      "id": "impact-approval",
+      "agentType": "HumanGateAgent",
+      "dependsOn": ["impact-analysis"],
+      "requiresApproval": true,
+      "gateId": "impact-approval",
+      "branchCondition": "#input['kind'] == 'Brownfield'",
+      "recoveryMode": "NONE",
+      "description": "Human approval of the impact analysis before any brownfield code is touched."
+    },
+    {
+      "id": "decompose",
+      "agentType": "DecomposeAgent",
+      "dependsOn": ["quality-check", "clarify", "impact-approval"],
+      "timeoutMs": 30000,
+      "maxAttempts": 2,
+      "recoveryMode": "ROLLBACKABLE",
+      "description": "Break the requirement into ordered tasks with dependencies and TDD flags."
+    },
+    {
+      "id": "contract-design",
+      "agentType": "ContractAgent",
+      "dependsOn": ["decompose"],
+      "timeoutMs": 30000,
+      "maxAttempts": 2,
+      "recoveryMode": "ROLLBACKABLE",
+      "description": "Decide the API contract impact and the resulting version change."
+    },
+    {
+      "id": "test-plan",
+      "agentType": "TestPlanAgent",
+      "dependsOn": ["decompose"],
+      "timeoutMs": 30000,
+      "maxAttempts": 2,
+      "recoveryMode": "ROLLBACKABLE",
+      "description": "Derive the acceptance tests each task must satisfy before implementation."
+    },
+    {
+      "id": "implement",
+      "agentType": "ImplementAgent",
+      "dependsOn": ["contract-design", "test-plan"],
+      "joinType": "ALL",
+      "timeoutMs": 60000,
+      "maxAttempts": 2,
+      "recoveryMode": "ROLLBACKABLE",
+      "description": "Apply the approved change set. Rollbackable: the change set can be reverted."
+    },
+    {
+      "id": "unit-tests",
+      "agentType": "TestRunnerAgent",
+      "dependsOn": ["implement"],
+      "timeoutMs": 60000,
+      "maxAttempts": 3,
+      "backoffBaseMs": 500,
+      "recoveryMode": "ROLLBACKABLE",
+      "description": "Run the unit suite."
+    },
+    {
+      "id": "contract-tests",
+      "agentType": "TestRunnerAgent",
+      "dependsOn": ["implement"],
+      "timeoutMs": 60000,
+      "maxAttempts": 3,
+      "backoffBaseMs": 500,
+      "recoveryMode": "ROLLBACKABLE",
+      "description": "Run the contract suite against the published API contract."
+    },
+    {
+      "id": "security-scan",
+      "agentType": "SecurityScanAgent",
+      "dependsOn": ["implement"],
+      "timeoutMs": 60000,
+      "maxAttempts": 2,
+      "backoffBaseMs": 500,
+      "recoveryMode": "COMPENSATABLE",
+      "description": "Scan dependencies and configuration. Compensatable: an external scan quota is consumed and cannot be un-consumed."
+    },
+    {
+      "id": "regression",
+      "agentType": "TestRunnerAgent",
+      "dependsOn": ["implement"],
+      "branchCondition": "#input['kind'] == 'Brownfield'",
+      "timeoutMs": 60000,
+      "maxAttempts": 1,
+      "recoveryMode": "ROLLBACKABLE",
+      "description": "Brownfield only: prove that artefacts created before the change still work."
+    },
+    {
+      "id": "docs",
+      "agentType": "DocsAgent",
+      "dependsOn": ["implement"],
+      "timeoutMs": 30000,
+      "maxAttempts": 2,
+      "backoffBaseMs": 500,
+      "fallbackAllowed": true,
+      "criticality": "NON_BLOCKING",
+      "recoveryMode": "ROLLBACKABLE",
+      "description": "Regenerate documentation. Non-blocking: may fall back to a degraded result rather than stop the run."
+    },
+    {
+      "id": "policy-eval",
+      "agentType": "PolicyEvaluationAgent",
+      "dependsOn": ["unit-tests", "contract-tests", "security-scan", "regression", "docs"],
+      "joinType": "ALL",
+      "timeoutMs": 30000,
+      "maxAttempts": 1,
+      "recoveryMode": "NONE",
+      "description": "Evaluate the versioned policy set over everything the run produced. Joins the parallel verification branch."
+    },
+    {
+      "id": "release-gate",
+      "agentType": "HumanGateAgent",
+      "dependsOn": ["policy-eval"],
+      "requiresApproval": true,
+      "gateId": "release-gate",
+      "recoveryMode": "NONE",
+      "description": "Human release decision: READY, READY_WITH_ACCEPTED_LIMITATIONS or NOT_READY."
+    },
+    {
+      "id": "summary",
+      "agentType": "SummaryAgent",
+      "dependsOn": ["release-gate"],
+      "timeoutMs": 30000,
+      "maxAttempts": 2,
+      "recoveryMode": "ROLLBACKABLE",
+      "description": "Assemble the engineering summary for this run from its artifacts, decisions and policy evaluation."
+    }
+  ]
+}

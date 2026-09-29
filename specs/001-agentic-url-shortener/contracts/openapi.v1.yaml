@@ -1,0 +1,665 @@
+openapi: 3.0.3
+info:
+  title: Agentic Software Engineering System — URL Shortener
+  version: 1.1.0
+  description: |
+    Two planes in one API surface.
+
+    **Application plane** — creating, resolving and measuring short links.
+    **Control plane** — governed SDLC workflow runs, their gates, their audit trail and their metrics.
+
+    Versioning: an additive optional field is a minor bump and needs no consumer action; a removal,
+    rename or type change is a major bump behind a new path prefix. Every response carries an
+    `API-Version` header so a consumer can detect a change without parsing a body.
+
+    Errors are RFC 9457 `application/problem+json` with a stable `errorCode`. The status codes carry
+    meaning: 404 means the code never existed, 410 means it existed and lapsed, 422 means the URL
+    parsed but policy refused the target, 409 means an `Idempotency-Key` was reused with a
+    different body.
+  license:
+    name: Assessment artifact
+
+servers:
+  - url: http://localhost:8080
+
+tags:
+  - name: links
+    description: Application plane — short links
+  - name: redirect
+    description: Application plane — the public redirect
+  - name: workflows
+    description: Control plane — governed SDLC runs
+  - name: governance
+    description: Control plane — gates, policy exceptions, metrics
+  - name: health
+
+security:
+  - ApiKey: []
+
+paths:
+  /api/v1/links:
+    post:
+      tags: [links]
+      summary: Create a short link
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema: { type: string }
+          description: Same key plus the same body replays the original link; same key plus a different body is a 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateLinkRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            API-Version: { schema: { type: string } }
+            Location: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Link' }
+        '200':
+          description: Idempotent replay of an earlier request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Link' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/links/{code}:
+    get:
+      tags: [links]
+      summary: Read a link
+      parameters: [{ $ref: '#/components/parameters/Code' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Link' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [links]
+      summary: Delete a link
+      parameters: [{ $ref: '#/components/parameters/Code' }]
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/links/{code}/stats:
+    get:
+      tags: [links]
+      summary: Click statistics
+      description: Remains readable after a link expires — only the redirect stops working.
+      parameters:
+        - { $ref: '#/components/parameters/Code' }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Stats' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /{code}:
+    get:
+      tags: [redirect]
+      summary: Follow a short link
+      security: []
+      description: |
+        The only public route. The `Location` value is built from the stored canonical target and is
+        never influenced by the request, so this endpoint cannot be used as an open redirector.
+        302 rather than 301 so that caching does not defeat click counting.
+      parameters: [{ $ref: '#/components/parameters/Code' }]
+      responses:
+        '302':
+          description: Found
+          headers:
+            Location: { schema: { type: string } }
+            Referrer-Policy: { schema: { type: string } }
+        '404': { $ref: '#/components/responses/Problem' }
+        '410': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/workflows:
+    post:
+      tags: [workflows]
+      summary: Start a governed SDLC run
+      parameters:
+        - name: waitMs
+          in: query
+          schema: { type: integer, default: 0 }
+          description: Block up to this long for the run to settle. Affects the response only, never execution.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StartRunRequest' }
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RunSummary' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+    get:
+      tags: [workflows]
+      summary: List runs
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/RunSummary' }
+
+  /api/v1/workflows/{runId}:
+    get:
+      tags: [workflows]
+      summary: Full run state, including every node
+      parameters: [{ $ref: '#/components/parameters/RunId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RunDetail' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/workflows/{runId}/graph:
+    get:
+      tags: [workflows]
+      summary: Mermaid graph, coloured by node state
+      parameters:
+        - { $ref: '#/components/parameters/RunId' }
+        - { name: format, in: query, schema: { type: string, default: mermaid } }
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain: { schema: { type: string } }
+
+  /api/v1/workflows/{runId}/history:
+    get:
+      tags: [workflows]
+      summary: The transition journal, in order
+      parameters: [{ $ref: '#/components/parameters/RunId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { type: object } }
+
+  /api/v1/workflows/{runId}/audit:
+    get:
+      tags: [governance]
+      summary: The hash-chained audit trail, as JSON Lines
+      parameters: [{ $ref: '#/components/parameters/RunId' }]
+      responses:
+        '200':
+          description: OK
+          headers:
+            X-Audit-Chain:
+              schema: { type: string }
+              description: '`intact`, or `broken-at-row-N` naming the first row that fails verification.'
+            X-Audit-Rows: { schema: { type: integer } }
+          content:
+            application/x-ndjson: { schema: { type: string } }
+
+  /api/v1/workflows/{runId}/artifacts:
+    get:
+      tags: [workflows]
+      summary: Every artifact produced, with its provenance
+      parameters: [{ $ref: '#/components/parameters/RunId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { type: object } }
+
+  /api/v1/workflows/{runId}/lineage/{artifactId}:
+    get:
+      tags: [workflows]
+      summary: Walk an artifact's provenance back to the original requirement
+      parameters:
+        - { $ref: '#/components/parameters/RunId' }
+        - { name: artifactId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/workflows/{runId}/gates:
+    get:
+      tags: [governance]
+      summary: Every gate and its current state
+      parameters: [{ $ref: '#/components/parameters/RunId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Gate' } }
+
+  /api/v1/workflows/{runId}/gates/{gateId}/decision:
+    post:
+      tags: [governance]
+      summary: Record a human decision
+      description: |
+        The only way a gate moves forward. There is no endpoint that decides on a caller's behalf,
+        and no timer that does it either: an elapsed approval window produces a safe stop.
+        Both `actor` and `rationale` are required and blank values are refused.
+      parameters:
+        - { $ref: '#/components/parameters/RunId' }
+        - { name: gateId, in: path, required: true, schema: { type: string } }
+        - { name: waitMs, in: query, schema: { type: integer, default: 0 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DecisionRequest' }
+      responses:
+        '200':
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Decision' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '409':
+          $ref: '#/components/responses/Problem'
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/workflows/{runId}/resume:
+    post:
+      tags: [governance]
+      summary: Resume a suspended or safe-stopped run
+      parameters:
+        - { $ref: '#/components/parameters/RunId' }
+        - { name: waitMs, in: query, schema: { type: integer, default: 0 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResumeRequest' }
+      responses:
+        '200':
+          description: Resumed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RunSummary' }
+
+  /api/v1/workflows/{runId}/safe-stop:
+    post:
+      tags: [governance]
+      summary: Operator safe-stop
+      parameters: [{ $ref: '#/components/parameters/RunId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResumeRequest' }
+      responses:
+        '200':
+          description: Stopped
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RunSummary' }
+
+  /api/v1/metrics/reliability:
+    get:
+      tags: [governance]
+      summary: Reliability metrics, derived from the journal
+      description: |
+        Recomputed on every request; nothing is stored or hand-maintained. MTTR is the mean over
+        **recovered** failures only, and unrecovered failures are reported separately. Every
+        response carries `dataClass: DEMONSTRATION`.
+      parameters:
+        - { name: runId, in: query, schema: { type: array, items: { type: string } } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReliabilityReport' }
+
+  /api/v1/policy-exceptions:
+    get:
+      tags: [governance]
+      summary: List policy exceptions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/PolicyException' } }
+    post:
+      tags: [governance]
+      summary: Request an exception
+      description: Recorded as a request. It grants nothing until a decision is made.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [policyId, reason, scope]
+              properties:
+                policyId: { type: string }
+                reason: { type: string }
+                scope: { type: string }
+                runId: { type: string }
+      responses:
+        '201':
+          description: Requested
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PolicyException' }
+
+  /api/v1/policy-exceptions/{exceptionId}/decision:
+    post:
+      tags: [governance]
+      summary: Approve or reject an exception
+      description: |
+        An approval must name a compensating control and an expiry. A waiver with neither is how a
+        temporary deviation becomes the new standard. Maximum validity is 90 days; longer is a
+        policy change, not an exception.
+      parameters:
+        - { name: exceptionId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision, approver, compensatingControl]
+              properties:
+                decision: { type: string, enum: [APPROVE, REJECT] }
+                approver: { type: string }
+                compensatingControl: { type: string }
+                validForDays: { type: integer, default: 30, maximum: 90 }
+                reviewCondition: { type: string }
+      responses:
+        '200':
+          description: Decided
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PolicyException' }
+
+  /health/live:
+    get:
+      tags: [health]
+      summary: Liveness — should this process be restarted?
+      security: []
+      responses:
+        '200': { description: UP }
+
+  /health/ready:
+    get:
+      tags: [health]
+      summary: Readiness — should this instance receive traffic?
+      security: []
+      responses:
+        '200': { description: UP }
+        '503': { description: Database unreachable or the analytics queue is saturated }
+
+components:
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: Compared against SHA-256 hashes in configuration. Scopes are READ, WRITE and CONTROL.
+
+  parameters:
+    Code:
+      name: code
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[A-Za-z0-9]{1,16}$' }
+    RunId:
+      name: runId
+      in: path
+      required: true
+      schema: { type: string }
+
+  responses:
+    Problem:
+      description: RFC 9457 problem detail
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+
+  schemas:
+    CreateLinkRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          maxLength: 2048
+          description: Absolute http or https URL. Credentials, control characters and hosts resolving to private addresses are refused.
+        expiresAt:
+          type: string
+          format: date-time
+          description: Optional absolute UTC instant, strictly in the future. There is no default expiry.
+
+    Link:
+      type: object
+      properties:
+        code: { type: string }
+        shortUrl: { type: string }
+        target: { type: string }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time, nullable: true }
+
+    Stats:
+      type: object
+      properties:
+        code: { type: string }
+        totalClicks: { type: integer, format: int64 }
+        lastClickAt: { type: string, format: date-time, nullable: true }
+        daily:
+          type: array
+          items:
+            type: object
+            properties:
+              date: { type: string, format: date }
+              clicks: { type: integer, format: int64 }
+        consistency:
+          type: string
+          example: eventual (<=1s)
+          description: Clicks are written off the redirect path, so counts trail reality slightly.
+
+    StartRunRequest:
+      type: object
+      required: [text, actor]
+      properties:
+        definition: { type: string, default: sdlc }
+        text: { type: string, description: The requirement, verbatim. }
+        requirementId: { type: string }
+        kind: { type: string, enum: [Greenfield, Brownfield, Unclassified] }
+        actor: { type: string }
+        policyVersion: { type: string, default: '1.0.0' }
+        faults:
+          type: object
+          description: Deterministic fault injection for demonstration. Injected failures are marked (fault-injected) in the audit trail.
+        dependencyScan:
+          type: object
+          description: Real scan results, if any were produced. Absent, the policy set raises an exception request rather than assuming a clean scan.
+        tddEvidence:
+          type: object
+          description: A reference to real red-then-green evidence. Absent, TEST-001 raises an exception request.
+
+    RunSummary:
+      type: object
+      properties:
+        runId: { type: string }
+        definitionName: { type: string }
+        definitionVersion: { type: integer, format: int64 }
+        policyVersion: { type: string }
+        state:
+          type: string
+          enum: [CREATED, RUNNING, SUSPENDED, AWAITING_CLARIFICATION, COMPLETED, COMPLETED_WITH_LIMITATIONS, SAFE_STOPPED, REJECTED, FAILED]
+        terminalOutcome: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        terminalAt: { type: string, format: date-time, nullable: true }
+        links: { type: object, additionalProperties: { type: string } }
+
+    RunDetail:
+      allOf:
+        - $ref: '#/components/schemas/RunSummary'
+        - type: object
+          properties:
+            releaseBlocked: { type: boolean }
+            nodes: { type: array, items: { $ref: '#/components/schemas/Node' } }
+            decisions: { type: array, items: { $ref: '#/components/schemas/Decision' } }
+            assumptions: { type: array, items: { type: string } }
+            replanning: { type: array, items: { type: string } }
+            facts: { type: object }
+
+    Node:
+      type: object
+      properties:
+        id: { type: string }
+        state:
+          type: string
+          enum: [PENDING, BLOCKED, READY, RUNNING, RETRYING, TIMED_OUT, AWAITING_APPROVAL, APPROVED, REJECTED, FALLING_BACK, ROLLING_BACK, ROLLED_BACK, COMPENSATING, COMPENSATED, SAFE_STOPPED, SKIPPED, INVALIDATED, SUCCEEDED, FAILED]
+        attempts: { type: integer }
+        startedAt: { type: string, format: date-time, nullable: true }
+        endedAt: { type: string, format: date-time, nullable: true }
+        reason: { type: string, nullable: true }
+        lastFailureClass: { type: string, enum: [TRANSIENT, PERMANENT], nullable: true }
+        lastFailureReason: { type: string, nullable: true }
+        waitingOn:
+          type: array
+          items: { type: string }
+          description: Dependencies this node is still waiting for — the synchronisation evidence.
+        artifactIds: { type: array, items: { type: string } }
+        degraded: { type: boolean }
+
+    Gate:
+      type: object
+      properties:
+        gateId: { type: string }
+        nodeId: { type: string }
+        state: { type: string }
+        requestedAt: { type: string, format: date-time, nullable: true }
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the approval window elapses. Elapsing produces a safe stop, never an approval.
+        description: { type: string }
+        contextArtifacts: { type: array, items: { type: string } }
+        decision: { type: string, nullable: true }
+        actor: { type: string, nullable: true }
+
+    DecisionRequest:
+      type: object
+      required: [decision, actor, rationale]
+      properties:
+        decision:
+          type: string
+          enum: [APPROVE, READY, READY_WITH_ACCEPTED_LIMITATIONS, REJECT, NOT_READY, SAFE_STOP]
+        actor: { type: string }
+        rationale:
+          type: string
+          minLength: 10
+          description: Required. An approval with no stated reason is indistinguishable from a rubber stamp later.
+        conditions: { type: string }
+
+    Decision:
+      type: object
+      properties:
+        decisionId: { type: string }
+        gateId: { type: string }
+        decision: { type: string }
+        actor: { type: string }
+        rationale: { type: string }
+        conditions: { type: string, nullable: true }
+        at: { type: string, format: date-time }
+
+    ResumeRequest:
+      type: object
+      required: [actor, reason]
+      properties:
+        actor: { type: string }
+        reason: { type: string }
+
+    PolicyException:
+      type: object
+      properties:
+        id: { type: string }
+        policyId: { type: string }
+        reason: { type: string }
+        scope: { type: string }
+        approver: { type: string, nullable: true }
+        compensatingControl: { type: string, nullable: true }
+        approvedAt: { type: string, format: date-time, nullable: true }
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: An expired exception is re-evaluated as a FAIL. It does not decay into a pass.
+        reviewCondition: { type: string, nullable: true }
+
+    ReliabilityReport:
+      type: object
+      properties:
+        dataClass:
+          type: string
+          example: DEMONSTRATION
+          description: Always DEMONSTRATION. These are scripted runs, not production statistics.
+        note: { type: string }
+        population: { type: object }
+        runs: { type: object }
+        nodes: { type: object }
+        latency: { type: object }
+        recovery:
+          type: object
+          properties:
+            recoveredFailureEvents: { type: array, items: { type: object } }
+            recoveredCount: { type: integer }
+            totalRecoveryDurationMs: { type: integer, format: int64 }
+            mttrMs:
+              type: integer
+              format: int64
+              nullable: true
+              description: Mean over recovered failures only. Null — not zero — when nothing was recovered.
+            unrecoveredFailureEvents: { type: array, items: { type: object } }
+            unrecoveredCount: { type: integer }
+
+    Problem:
+      type: object
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        errorCode:
+          type: string
+          example: URL_HOST_BLOCKED
+          description: Stable machine-readable code; safe to branch on.
+        traceId: { type: string }
