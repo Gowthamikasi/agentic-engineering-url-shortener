@@ -16,38 +16,99 @@ every state change journalled.
 
 ---
 
-## Run it
+# Demo walkthrough — from a clean machine
 
-Prerequisite: **JDK 21**. Nothing else — no Docker, no database to install, no network at runtime.
+Follow this top to bottom on a machine that has never seen the project. Every command was executed
+against a fresh clone; the outputs shown are what came back.
+
+## Step 0 — what the machine needs
+
+**JDK 21 and git. That is all.** No Maven (a wrapper is included), no Docker, no database to
+install, no network once it is built.
 
 ```bash
-./mvnw verify                                    # build, 189 unit tests + 16 integration tests
-java -jar app/target/agentic-url-shortener.jar   # starts on http://localhost:8080
+java -version
 ```
 
-On Windows use `mvnw.cmd`, and run the shell scripts from Git Bash. If `java -version` reports
-anything below 21, put JDK 21 on the path for the session first — setting `JAVA_HOME` alone is not
-enough, because it steers Maven but not a bare `java` command:
+If that reports anything below 21, put a JDK 21 on the path **for this terminal session**. Setting
+`JAVA_HOME` alone is not enough — it steers Maven, but not a bare `java` command:
 
 ```powershell
 $env:JAVA_HOME = "C:\path\to\jdk-21"
 $env:PATH = "$env:JAVA_HOME\bin;" + $env:PATH
+java -version
 ```
 
-Leave that terminal running. Then, in a second one:
+A portable JDK 21 unzipped into any folder works; it does not need installing or admin rights.
+
+## Step 1 — clone somewhere with a short path
 
 ```bash
-./scripts/demo-scenarios.sh                      # runs all three scenarios, writes the evidence
+cd C:\
+mkdir demo
+cd demo
+git clone https://github.com/Gowthamikasi/agentic-engineering-url-shortener.git
+cd agentic-engineering-url-shortener
 ```
 
-Interactive API documentation is at <http://localhost:8080/swagger-ui.html>. Click **Authorize**,
-paste `demo-operator-key`, and every endpoint below is callable from the browser.
+> **Windows path limit — this bites.** The project has deep Java package directories. Cloning into
+> an already-deep folder fails part way with `Filename too long`, and git leaves you a **partial
+> checkout that still looks like it worked**. Clone somewhere short such as `C:\demo`, or enable
+> long paths first:
+>
+> ```bash
+> git config --global core.longpaths true
+> ```
+>
+> To confirm the checkout is complete, `git status` must print nothing. If it lists deleted files,
+> the clone failed — delete the folder and clone again somewhere shorter.
 
-### Demo API keys
+## Step 2 — build, and let every test run
 
-The prototype ships two keys. Only their SHA-256 hashes are in `application.yml`; the plaintext is
-here because this is a local prototype, and is **not safe to keep** anywhere else — see
-[SECURITY.md](SECURITY.md).
+```bash
+./mvnw verify
+```
+
+On Windows: `.\mvnw.cmd verify`. First run downloads dependencies, so give it a few minutes and a
+network connection. Expect `BUILD SUCCESS` and 205 tests.
+
+> **Do not use `-DskipTests` before a demo.** The `unit-tests` and `contract-tests` agents read the
+> **real** Surefire reports this build produces. Skip the tests and the workflow run will correctly
+> refuse to proceed — `No test reports matched 'contract-tests'. Run the build first; absence of
+> evidence is not a pass` — then roll back and safe-stop. That is the system working as designed,
+> but it is not the demo you want. A red build produces the same honest refusal.
+
+## Step 3 — start it
+
+```bash
+java -jar app/target/agentic-url-shortener.jar
+```
+
+Wait for `Started Application in ... seconds`. **Leave this terminal open** — closing it stops the
+server. Run the jar from the same folder each time: the database is written to `./data` relative to
+your working directory, so a different folder means a different, empty database.
+
+Open <http://localhost:8080/swagger-ui.html>, click **Authorize**, paste `demo-operator-key`, and
+every endpoint becomes callable from the browser. The whole demo can be driven from that page — the
+`curl` commands below are the same calls if you prefer a terminal.
+
+## Step 4 — warm up the data before anyone is watching
+
+A fresh clone has no database, so the metrics endpoint honestly returns zeros and `mttrMs: null`.
+Correct behaviour; poor opening slide. In a **second terminal**, populate it:
+
+```bash
+./scripts/demo-scenarios.sh
+```
+
+That needs Git Bash. If it is not available, just run the workflow in step 8 twice from Swagger —
+that alone gives you runs, artifacts, an audit chain, lineage and real metrics.
+
+Do this ten minutes early, not live.
+
+---
+
+## Demo API keys
 
 | Key | Scopes | Use |
 |---|---|---|
@@ -55,13 +116,10 @@ here because this is a local prototype, and is **not safe to keep** anywhere els
 | `demo-reviewer-key` | READ | inspect links, runs, audit and metrics |
 
 The split is the point: a reviewer can read every run and every metric without being able to approve
-anything.
+anything. Only SHA-256 hashes are in `application.yml`; the plaintext is here because this is a local
+prototype and is **not safe to keep** anywhere else — see [SECURITY.md](SECURITY.md).
 
----
-
-## Command reference
-
-Every command below was executed against the running system. Set these first so the rest pastes as-is:
+Set these once in your command terminal and the rest pastes as-is:
 
 ```bash
 BASE=http://localhost:8080
@@ -69,61 +127,84 @@ OP='X-Api-Key: demo-operator-key'
 JSON='Content-Type: application/json'
 ```
 
-### Health — no key required
+---
+
+## Step 5 — health
 
 ```bash
-curl -s $BASE/health/live      # {"status":"UP"} — is the process alive? if not, restart it
-curl -s $BASE/health/ready     # adds database, analyticsQueue, analyticsQueueDepth, analyticsDropped
+curl -s $BASE/health/live
+curl -s $BASE/health/ready
 ```
 
-`live` and `ready` are deliberately different. A failing `ready` means stop sending traffic; it does
-not mean restart, because a briefly unreachable database is not fixed by restarting. Both are
-unauthenticated, because a load balancer cannot hold credentials. `analyticsDropped` is exposed so
-the cost of the drop-clicks-rather-than-slow-redirects trade-off is visible instead of assumed.
+```json
+{"status":"UP"}
+{"status":"UP","database":"UP","analyticsQueue":"UP","analyticsQueueDepth":0,"analyticsDropped":0}
+```
 
-### Application plane — the shortener
+Two checks because they answer different questions. Failing `live` means restart me; failing `ready`
+means stop sending me traffic but do **not** restart me, because a briefly unreachable database is
+not fixed by restarting. Both are unauthenticated, since a load balancer cannot hold credentials.
+`analyticsDropped` publishes the cost of the drop-clicks-rather-than-slow-redirects trade-off instead
+of leaving it to be discovered.
+
+## Step 6 — the shortener
 
 ```bash
-# Create a link. Returns 201 and the short code.
 curl -s -X POST $BASE/api/v1/links -H "$OP" -H "$JSON" \
   -d '{"url":"https://www.wikipedia.org/wiki/Main_Page"}'
+```
 
-# Follow it. 302 while live, 410 once expired, 404 if it never existed.
-curl -si $BASE/CODE | head -5
+```json
+{"code":"hhXBoMK","shortUrl":"http://localhost:8080/hhXBoMK",
+ "target":"https://www.wikipedia.org/wiki/Main_Page","createdAt":"2026-09-29T20:45:33Z"}
+```
 
-# Inspect the link without counting a click.
-curl -s $BASE/api/v1/links/CODE -H "$OP"
+Take the `code` from that response and use it below — replace `CODE` with it. Pasting the word
+`CODE` literally is a 404.
 
-# Click analytics. from/to are optional ISO-8601 bounds; the default window is the last 30 days.
-curl -s $BASE/api/v1/links/CODE/stats -H "$OP"
-curl -s "$BASE/api/v1/links/CODE/stats?from=2026-01-01T00:00:00Z&to=2026-12-31T23:59:59Z" -H "$OP"
-
-# Delete it. Afterwards the code returns 404, not 410.
+```bash
+curl -si $BASE/CODE | head -5                          # 302 while live, 410 expired, 404 never existed
+curl -s  $BASE/api/v1/links/CODE -H "$OP"              # inspect without counting a click
+curl -s  $BASE/api/v1/links/CODE/stats -H "$OP"        # click analytics
 curl -s -o /dev/null -w '%{http_code}\n' -X DELETE $BASE/api/v1/links/CODE -H "$OP"
 ```
 
-Replace `CODE` with the code the create call returned. Counts are eventually consistent
-(`"consistency":"eventual (<=1s)"`), so read stats a moment after clicking — the redirect never waits
-on the analytics write.
+Or paste `http://localhost:8080/CODE` into a browser and watch Wikipedia load.
 
-**Refused on purpose.** These are worth running, because the error is the feature:
+```json
+{"code":"hhXBoMK","totalClicks":1,"lastClickAt":"2026-09-29T20:45:34Z",
+ "daily":[{"date":"2026-09-29","clicks":1}],"consistency":"eventual (<=1s)"}
+```
+
+Counts are eventually consistent, so read stats a second after clicking — the redirect never waits on
+the analytics write. The count only moves when a request actually reaches the server: pressing Back,
+or returning to a tab already on Wikipedia, does not reach it. `stats` also takes optional ISO-8601
+`from` and `to` bounds; the default window is the last 30 days.
+
+**Refused on purpose.** Run these — the error is the feature:
 
 ```bash
-# 422 URL_HOST_BLOCKED — the redirect endpoint cannot be turned into a way into the host network
+# 422 — the redirect endpoint cannot be turned into a way into the host network
 curl -s -X POST $BASE/api/v1/links -H "$OP" -H "$JSON" -d '{"url":"https://localhost/admin"}'
 
-# 400 URL_SCHEME_NOT_ALLOWED
+# 400 — only http and https are accepted
 curl -s -X POST $BASE/api/v1/links -H "$OP" -H "$JSON" -d '{"url":"javascript:alert(1)"}'
 
-# 401 with no key, and 401 again for a read-only key attempting a write
+# 401 with no key, 401 again for a read-only key attempting a write
 curl -s -o /dev/null -w '%{http_code}\n' -X POST $BASE/api/v1/links -H "$JSON" \
   -d '{"url":"https://example.org"}'
 curl -s -o /dev/null -w '%{http_code}\n' -X POST $BASE/api/v1/links -H "$JSON" \
   -H 'X-Api-Key: demo-reviewer-key' -d '{"url":"https://example.org"}'
 ```
 
-**Idempotency.** The same key replays instead of minting a second code; the same key with a different
-body is a conflict, not a silent overwrite:
+```json
+{"status":422,"errorCode":"URL_HOST_BLOCKED",
+ "detail":"Host 'localhost' is an internal name and is not allowed as a redirect target."}
+{"status":400,"errorCode":"URL_SCHEME_NOT_ALLOWED",
+ "detail":"Scheme 'javascript' is not allowed; only http and https are accepted."}
+```
+
+## Step 7 — idempotency
 
 ```bash
 K='Idempotency-Key: demo-001'
@@ -135,31 +216,53 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST $BASE/api/v1/links -H "$OP" -H 
   -d '{"url":"https://example.org"}'         # 409 conflict
 ```
 
-### Control plane — the orchestration engine
+A retried request does not burn a second code. A reused key with different content is a conflict, not
+a silent overwrite.
+
+## Step 8 — the control plane: hand it something vague
 
 ```bash
-# Start a run. waitMs blocks for up to that long, so you see a terminal or parked state directly.
 curl -s -X POST "$BASE/api/v1/workflows?waitMs=30000" -H "$OP" -H "$JSON" -d '{
   "text":"Links should expire after a while and we should show popular links.",
   "requirementId":"REQ-SC-001","kind":"Unclassified","actor":"you"}'
 ```
 
-That run **stops** at `AWAITING_CLARIFICATION` rather than guessing what "a while" means. Inspect it:
+```json
+{"runId":"run_1a0eeeaa263_1","state":"AWAITING_CLARIFICATION"}
+```
+
+**Pause here.** It read the requirement, found four things it could not implement safely, and
+stopped. `implement` has zero attempts — it wrote nothing.
+
+Save the run id, then inspect:
 
 ```bash
-RUN=the_runId_from_above
+RUN=run_1a0eeeaa263_1        # use the runId you got back
 curl -s $BASE/api/v1/workflows/$RUN           -H "$OP"   # state, nodes, attempts, ambiguities
-curl -s $BASE/api/v1/workflows/$RUN/history   -H "$OP"   # the journal: every transition, timestamped
+curl -s $BASE/api/v1/workflows/$RUN/history   -H "$OP"   # every transition, timestamped
 curl -s $BASE/api/v1/workflows/$RUN/artifacts -H "$OP"   # everything the run produced
-curl -s $BASE/api/v1/workflows/$RUN/gates     -H "$OP"   # which gates exist and which are open
+curl -s $BASE/api/v1/workflows/$RUN/gates     -H "$OP"   # which gates exist and their state
 curl -s $BASE/api/v1/workflows/$RUN/graph     -H "$OP"   # Mermaid diagram, per-node state
 ```
 
 `history` is where parallelism is provable: sibling nodes start within milliseconds of each other,
 their execution windows overlap, and the join node starts only after the last of them finished.
 
-Answer the gate. A blank rationale is rejected — an unexplained approval is indistinguishable from a
-rubber stamp when someone reviews the run months later:
+## Step 9 — answer the gate
+
+An unexplained approval is indistinguishable from a rubber stamp months later, so a blank rationale
+is refused:
+
+```bash
+curl -s -X POST $BASE/api/v1/workflows/$RUN/gates/clarify/decision -H "$OP" -H "$JSON" \
+  -d '{"decision":"APPROVE","actor":"you","rationale":""}'
+```
+
+```json
+{"status":400,"detail":"rationale: rationale must be a real explanation, not a placeholder"}
+```
+
+Now answer it properly:
 
 ```bash
 curl -s -X POST $BASE/api/v1/workflows/$RUN/gates/clarify/decision -H "$OP" -H "$JSON" -d '{
@@ -167,56 +270,108 @@ curl -s -X POST $BASE/api/v1/workflows/$RUN/gates/clarify/decision -H "$OP" -H "
   "rationale":"Default expiry is 90 days when expiresAt is omitted; popular means top 10 by clicks over the trailing 7 days, on an authenticated endpoint."}'
 ```
 
-The definition version goes 1 → 2 and the nodes invalidated by that answer re-run. Work that did not
-depend on it keeps its result, and its approval.
+The definition version goes **1 → 2** and the nodes invalidated by that answer re-run. Work that did
+not depend on it keeps its result, and its approval.
+
+## Step 10 — the second gate, which every run has
+
+Waiting will not advance anything: the approval timeout produces a safe stop, never an approval.
+There is no code path from elapsed time to an approved state.
+
+Check what is still open — the run is not finished until `release-gate` is answered too:
+
+```bash
+curl -s $BASE/api/v1/workflows/$RUN/gates -H "$OP"
+```
+
+```
+clarify          -> SKIPPED             (answered, then superseded by the v2 replan)
+impact-approval  -> SKIPPED             (only applies to Brownfield input)
+release-gate     -> AWAITING_APPROVAL
+```
+
+```bash
+curl -s -X POST $BASE/api/v1/workflows/$RUN/gates/release-gate/decision -H "$OP" -H "$JSON" -d '{
+  "decision":"APPROVE","actor":"you",
+  "rationale":"Tests pass, policy reports three known exceptions with compensating controls, and the limitations are disclosed in the run summary."}'
+```
+
+Two more controls exist for when a run stops on its own:
 
 ```bash
 curl -s -X POST $BASE/api/v1/workflows/$RUN/resume    -H "$OP"   # continue after a safe stop
 curl -s -X POST $BASE/api/v1/workflows/$RUN/safe-stop -H "$OP"   # park the run deliberately
 ```
 
-A gate never advances on a timer. The approval timeout produces a safe stop, never an approval.
-
-### Evidence
+## Step 11 — the evidence
 
 ```bash
-# Hash-chained audit log. The response headers say whether the chain verifies.
 curl -si $BASE/api/v1/workflows/$RUN/audit -H "$OP" | grep -i '^X-Audit'
-#   X-Audit-Chain: intact
-#   X-Audit-Rows: 65
+```
 
-# Walk any artifact back to the sentence it came from, through the decisions in force.
+```
+X-Audit-Chain: intact
+X-Audit-Rows: 62
+```
+
+Every row commits to the previous row's hash. Edit or delete one and every hash after it breaks, and
+the header names the row where it fails. Tamper-evident, not tamper-proof.
+
+```bash
 curl -s $BASE/api/v1/workflows/$RUN/lineage/summary:RunSummary:v1 -H "$OP"
+```
 
-# The four required metrics, recomputed from the journal on every request.
+Walks any artifact back to the sentence it came from, through the decisions in force at each step.
+It survives human gates: a gate produces no artifact, so the chain looks through it rather than
+stopping there. **This needs a completed run** — ask for an artifact the run never produced and you
+get an honest 404, so list `/artifacts` first and pick one from there.
+
+```bash
 curl -s $BASE/api/v1/metrics/reliability -H 'X-Api-Key: demo-reviewer-key'
 ```
 
-Metrics read as zeros until runs exist — run `./scripts/demo-scenarios.sh` first. `mttrMs` is `null`
-rather than `0` when nothing has been recovered, because no data and instant recovery are different
-claims. Every response carries `dataClass: DEMONSTRATION` and lists the `runIds` it was computed from.
+All four required metrics, recomputed from the journal on every request — there is nowhere to type a
+number in. `mttrMs` is `null` rather than `0` when nothing has been recovered, because no data and
+instant recovery are different claims. Every response carries `dataClass: DEMONSTRATION` and lists
+the `runIds` it was computed from.
 
-### Policy exceptions — the waiver workflow
+## Step 12 — the waiver workflow
 
-Rules that cannot be satisfied report `EXCEPTION_REQUESTED`, which is neither a pass nor a violation:
-it is a decision a human owes. This is where that decision gets recorded.
+Rules that cannot be satisfied report `EXCEPTION_REQUESTED` — neither a pass nor a violation, but a
+decision a human owes. This is where it gets recorded.
 
 ```bash
-# Ask for a waiver. A request is not a waiver — note there is no approver and no expiry yet.
 curl -s -X POST $BASE/api/v1/policy-exceptions -H "$OP" -H "$JSON" -d '{
   "policyId":"SEC-004",
   "reason":"No dependency vulnerability scanner is wired into this prototype.",
   "scope":"release candidate"}'
+```
 
-# Approve it. Both of these are refused:
-#   compensatingControl ""  -> 400 "a waiver with no compensating control is just a gap"
-#   validForDays 400        -> 400 "a longer waiver is a policy change, not an exception"
+```json
+{"id":"exc_1a0eeccd57d","policyId":"SEC-004","reason":"...","scope":"release candidate"}
+```
+
+No approver, no expiry — a request is not a waiver. Take that `id` and try to approve it badly:
+
+```bash
+# 400 "a waiver with no compensating control is just a gap"
+curl -s -X POST $BASE/api/v1/policy-exceptions/EXC_ID/decision -H "$OP" -H "$JSON" \
+  -d '{"decision":"APPROVE","approver":"you","compensatingControl":""}'
+
+# 400 "a longer waiver is a policy change, not an exception"
+curl -s -X POST $BASE/api/v1/policy-exceptions/EXC_ID/decision -H "$OP" -H "$JSON" -d '{
+  "decision":"APPROVE","approver":"you","compensatingControl":"Manual dependency review.",
+  "validForDays":400}'
+```
+
+Then properly, and list the register:
+
+```bash
 curl -s -X POST $BASE/api/v1/policy-exceptions/EXC_ID/decision -H "$OP" -H "$JSON" -d '{
   "decision":"APPROVE","approver":"you",
   "compensatingControl":"Manual review of the dependency tree before release.",
   "validForDays":30,"reviewCondition":"Revisit once a scanner is wired into the build."}'
 
-# The standing register of every rule currently being bent, by whom, and until when.
 curl -s $BASE/api/v1/policy-exceptions -H "$OP"
 ```
 
@@ -224,17 +379,35 @@ An approved exception expires — 90 days maximum, 30 by default — and the wai
 `EXCEPTION_REQUESTED` in the policy output. It never flips to green. The gap stays visible; what
 changes is that someone has signed for it.
 
+## Step 13 — it survives a restart
+
+Stop the server with `Ctrl+C`, start it again, and ask for the same run id. Every endpoint still
+answers: artifacts, audit chain, lineage, decisions. Nothing lived only in memory — a finished run is
+rebuilt from the database the first time it is asked for.
+
+---
+
+## If something goes wrong
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `Filename too long` during clone | Windows 260-character path limit | Clone into a short path such as `C:\demo`, or `git config --global core.longpaths true`. Re-clone; a partial checkout still looks fine until `git status` shows deletions |
+| `UnsupportedClassVersionError` | a bare `java` is older than 21 | Put JDK 21 on `PATH`, not just `JAVA_HOME` |
+| Swagger says **Failed to fetch** with no status code | the server is not running | Restart the jar, reload the page, Authorize again |
+| A run rolls back at `unit-tests` or `contract-tests` | the build was skipped or red | Run `./mvnw verify` to green, then start a new run |
+| Metrics are all zeros, `mttrMs: null` | no runs exist yet | Run `./scripts/demo-scenarios.sh`, or start a workflow |
+| Lineage returns 404 | that artifact was never produced | List `/artifacts` and pick one from it |
+| A 404 on a short link you just made | `CODE` pasted literally | Substitute the real code from the create response |
+
 ---
 
 ## Where to look
-
-Start here, in this order:
 
 | # | Document | What it gives you |
 |---|---|---|
 | 1 | [docs/assessment/requirements-coverage.md](docs/assessment/requirements-coverage.md) | The assignment clause by clause, against what exists |
 | 2 | [docs/assessment/reviewer-guide.md](docs/assessment/reviewer-guide.md) | Every claim, with the command that proves it |
-| 3 | [docs/assessment/demo-script.md](docs/assessment/demo-script.md) | A 20-minute walkthrough, with captured output |
+| 3 | [docs/assessment/demo-script.md](docs/assessment/demo-script.md) | A 20-minute spoken walkthrough, with captured output |
 | 4 | [docs/assessment/final-engineering-summary.md](docs/assessment/final-engineering-summary.md) | Plan, artifacts, risks, limitations, release decision |
 | 5 | [docs/architecture/architecture.md](docs/architecture/architecture.md) | Components, orchestration model, control flow |
 | 6 | [docs/scenarios/](docs/scenarios/) | The three executed scenarios and their evidence |
@@ -292,9 +465,6 @@ Each node declares both gates. Its **entry** gate is its dependencies plus a bra
 declared output has failed, not succeeded. Nodes run when their entry gate opens, which is what
 produces parallelism, joins and skipped branches from a single rule. Retry, timeout and recovery
 are owned by the engine, not by agents, so the journal's attempt count is the truth.
-
-A gate never advances on a timer: the approval timeout produces a safe stop, and there is no code
-path from elapsed time to an approved state.
 
 ---
 
