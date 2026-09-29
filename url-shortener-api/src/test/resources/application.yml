@@ -1,0 +1,34 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:apitest;DB_CLOSE_DELAY=-1
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/app
+
+urlshortener:
+  base-url: http://localhost:8080
+  short-code:
+    alphabet: BASE62
+    length: 7
+    collision-retries: 3
+  validation:
+    # Tests must not depend on DNS, so host resolution is switched off here and covered
+    # directly by UrlValidatorTest with a stub resolver instead.
+    enforce-address-checks: false
+  rate-limit:
+    enabled: false
+  api-keys:
+    - id: operator
+      sha256: 4a7c449d22a99026fac16a47621ff68792ff589f72334ea3950ce186a5615e9a
+      scopes: [READ, WRITE, CONTROL]
+    - id: reviewer
+      sha256: 32dc90f8d497d0e9c2feb824612a5bd35883a01ba25a4555e173b3a31909a2f2
+      scopes: [READ]
+
+logging:
+  level:
+    org.hibernate.engine.jdbc.spi.SqlExceptionHelper: OFF
