@@ -1,0 +1,51 @@
+flowchart TD
+  ingest["ingest<br/>SUCCEEDED"]:::ok
+  normalize["normalize<br/>SUCCEEDED"]:::ok
+  quality_check["quality-check<br/>SUCCEEDED"]:::ok
+  clarify["clarify 🛑<br/>SKIPPED"]:::skip
+  impact_analysis["impact-analysis<br/>SKIPPED"]:::skip
+  impact_approval["impact-approval 🛑<br/>SKIPPED"]:::skip
+  decompose["decompose<br/>SUCCEEDED"]:::ok
+  contract_design["contract-design<br/>SUCCEEDED"]:::ok
+  test_plan["test-plan<br/>SUCCEEDED"]:::ok
+  implement["implement<br/>SUCCEEDED"]:::ok
+  unit_tests["unit-tests<br/>SUCCEEDED"]:::ok
+  contract_tests["contract-tests<br/>SUCCEEDED"]:::ok
+  security_scan["security-scan<br/>SUCCEEDED"]:::ok
+  regression["regression<br/>SKIPPED"]:::skip
+  docs["docs<br/>SUCCEEDED"]:::ok
+  policy_eval["policy-eval<br/>SUCCEEDED"]:::ok
+  release_gate["release-gate 🛑<br/>SUCCEEDED"]:::ok
+  summary["summary<br/>SUCCEEDED"]:::ok
+  ingest --> normalize
+  normalize --> quality_check
+  quality_check --> clarify
+  quality_check --> impact_analysis
+  clarify --> impact_analysis
+  impact_analysis --> impact_approval
+  quality_check --> decompose
+  clarify --> decompose
+  impact_approval --> decompose
+  decompose --> contract_design
+  decompose --> test_plan
+  contract_design --> implement
+  test_plan --> implement
+  implement --> unit_tests
+  implement --> contract_tests
+  implement --> security_scan
+  implement --> regression
+  implement --> docs
+  unit_tests --> policy_eval
+  contract_tests --> policy_eval
+  security_scan --> policy_eval
+  regression --> policy_eval
+  docs --> policy_eval
+  policy_eval --> release_gate
+  release_gate --> summary
+  classDef ok fill:#d7f5dd,stroke:#2f8f46
+  classDef run fill:#dbe9ff,stroke:#2b6cb0
+  classDef retry fill:#fff1cc,stroke:#b7791f
+  classDef gate fill:#ffe8cc,stroke:#c05621
+  classDef bad fill:#ffe3e3,stroke:#c53030
+  classDef skip fill:#eeeeee,stroke:#999999,stroke-dasharray:3 3
+  classDef pend fill:#ffffff,stroke:#999999
