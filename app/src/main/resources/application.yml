@@ -1,0 +1,86 @@
+spring:
+  application:
+    name: agentic-url-shortener
+  datasource:
+    # File-mode H2 so a run survives a restart, which is what makes resume-after-crash testable.
+    url: jdbc:h2:file:./data/urlshortener;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: none        # Flyway owns the schema; Hibernate must never quietly change it.
+    open-in-view: false
+    properties:
+      hibernate.jdbc.batch_size: 50
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/app,classpath:db/migration/control
+  h2:
+    console:
+      enabled: false        # An open SQL console is not something to leave switched on.
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: 8080
+  error:
+    include-message: never
+    include-stacktrace: never
+  max-http-request-header-size: 8KB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+urlshortener:
+  base-url: http://localhost:8080
+  short-code:
+    # Flip to BASE58 to exercise the brownfield change; lookup always accepts both alphabets.
+    alphabet: BASE62
+    length: 7
+    collision-retries: 3
+  validation:
+    enforce-address-checks: true
+  rate-limit:
+    enabled: true
+    create-per-minute-per-key: 60
+    redirect-per-minute-per-ip: 600
+  analytics:
+    queue-capacity: 10000
+    batch-size: 200
+    drain-interval-ms: 250
+  # Demo keys. The plaintext values are documented in README.md and SECURITY.md and are safe only
+  # because this is a local prototype: replace them before this is exposed to anything.
+  api-keys:
+    - id: operator
+      sha256: 4a7c449d22a99026fac16a47621ff68792ff589f72334ea3950ce186a5615e9a
+      scopes: [READ, WRITE, CONTROL]
+    - id: reviewer
+      sha256: 32dc90f8d497d0e9c2feb824612a5bd35883a01ba25a4555e173b3a31909a2f2
+      scopes: [READ]
+
+orchestration:
+  definition-resource: /workflows/sdlc.v1.json
+  policy-version: 1.0.0
+  max-parallelism: 4
+  approval-timeout: 24h
+  approval-sweep-interval-ms: 60000
+  project-root: .
+  evidence-dir: docs/scenarios
+
+logging:
+  level:
+    root: INFO
+    com.example.urlshortener: INFO

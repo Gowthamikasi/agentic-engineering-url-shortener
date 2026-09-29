@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Log lines carry the run correlation identifiers, and secrets are masked before they are written.
+
+  The masking is the load-bearing part: a key that reaches a log file has been disclosed, and
+  rotating it later does not un-ship the log. Both appenders apply the same patterns, so switching
+  profile cannot quietly turn masking off.
+-->
+<configuration>
+
+  <!--
+    Two characters must stay out of this regex, both because of how Logback parses %replace options:
+    a comma ends the argument, and an apostrophe closes the quoted argument. Either one makes the
+    pattern fail to compile at startup, which takes the whole application down.
+  -->
+  <property name="SECRET_PATTERN"
+            value="(?i)(x-api-key|api[_-]?key|authorization|password|secret|token)(\s*[:=]\s*)(\S+)"/>
+
+  <springProfile name="!json">
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder>
+        <pattern>%d{HH:mm:ss.SSS} %-5level [%X{runId:-}/%X{nodeId:-}] %logger{36} - %replace(%msg){'${SECRET_PATTERN}', '$1$2***REDACTED***'}%n%replace(%ex){'${SECRET_PATTERN}', '$1$2***REDACTED***'}</pattern>
+      </encoder>
+    </appender>
+    <root level="INFO">
+      <appender-ref ref="CONSOLE"/>
+    </root>
+  </springProfile>
+
+  <springProfile name="json">
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+        <includeMdcKeyName>runId</includeMdcKeyName>
+        <includeMdcKeyName>nodeId</includeMdcKeyName>
+        <includeMdcKeyName>attemptId</includeMdcKeyName>
+        <includeMdcKeyName>traceId</includeMdcKeyName>
+        <jsonGeneratorDecorator class="net.logstash.logback.mask.MaskingJsonGeneratorDecorator">
+          <defaultMask>***REDACTED***</defaultMask>
+          <path>/apiKey</path>
+          <path>/password</path>
+          <path>/secret</path>
+          <path>/token</path>
+          <path>/authorization</path>
+        </jsonGeneratorDecorator>
+      </encoder>
+    </appender>
+    <root level="INFO">
+      <appender-ref ref="JSON"/>
+    </root>
+  </springProfile>
+
+</configuration>
