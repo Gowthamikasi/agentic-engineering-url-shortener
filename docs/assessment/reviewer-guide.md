@@ -24,7 +24,7 @@ If you only have five minutes, run items 1, 12 and 17.
 | 4 | The workflow is data, not code | `cat orchestration-core/src/main/resources/workflows/sdlc.v1.json` | 18 nodes with dependencies, gates, timeouts, retry budgets and recovery modes |
 | 5 | The policy set is versioned and readable | `cat policies/policy-set.v1.0.0.json` | 13 rules across 5 domains, each with `mandatory` |
 | 5a | The workflow schema is enforced, not decorative | `./mvnw -pl orchestration-core test -Dtest=WorkflowDefinitionSchemaTest` | 10 tests. Add `"maxAttemps": 3` to a node and the definition is refused at load |
-| 5b | Every executing node declares an exit gate | `grep -c producesArtifacts orchestration-core/src/main/resources/workflows/sdlc.v1.json` | 15 nodes declare what they owe the run |
+| 5b | Every executing node declares an exit gate | `grep -c '"producesArtifacts"' orchestration-core/src/main/resources/workflows/sdlc.v1.json` | `15` — every node except the three human gates, which produce a decision rather than an artifact |
 
 ## Application plane
 
