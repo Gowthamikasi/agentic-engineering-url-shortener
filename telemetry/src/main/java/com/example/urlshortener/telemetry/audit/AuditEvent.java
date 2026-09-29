@@ -5,9 +5,9 @@ import java.time.Instant;
 /**
  * One append-only audit row.
  *
- * <p>{@code prevHash}/{@code hash} form a per-run hash chain: each row commits to its own content
- * plus the previous row's hash, so a row cannot be edited or removed from the middle of a run
- * without breaking every subsequent hash. This is demo-grade tamper evidence, not a ledger.
+ * <p>prevHash and hash form a per-run chain: each row commits to its own content plus the
+ * previous row's hash, so editing or removing one breaks every hash after it. Tamper-evident,
+ * not tamper-proof.
  */
 public record AuditEvent(
         String runId,

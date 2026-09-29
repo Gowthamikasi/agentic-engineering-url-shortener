@@ -5,10 +5,8 @@ import java.time.Instant;
 /**
  * An approved deviation from a mandatory rule (REQ-D-006).
  *
- * <p>Every field here exists because leaving it out is how exceptions become permanent:
- * an exception names the rule it waives, why, how far it reaches, who approved it, what
- * compensating control stands in for the rule, and when it lapses. An expired exception is
- * re-evaluated as a plain FAIL — it does not decay into a PASS.
+ * <p>Every field is here because leaving it out is how exceptions become permanent. An expired
+ * exception is re-evaluated as a plain FAIL.
  */
 public record PolicyException(
         String id,

@@ -16,13 +16,11 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * Reliability metrics, derived from the journal on every request.
+ * Reliability metrics, recomputed from the journal on every request.
  *
- * <p>Nothing here is stored or hand-maintained: success rate, retry frequency and MTTR are
- * recomputed from the same rows a reviewer can read at {@code /audit}. Every response is labelled
- * {@code DEMONSTRATION} (REQ-D-013), because these are numbers from a handful of scripted runs,
- * not production statistics, and presenting them as the latter would be the easiest lie in the
- * whole system to tell.
+ * <p>Nothing is stored or maintained by hand: these come from the same rows served at /audit.
+ * Every response is labelled DEMONSTRATION, because they are numbers from a few scripted runs
+ * rather than production statistics.
  */
 @RestController
 @RequestMapping("/api/v1/metrics")

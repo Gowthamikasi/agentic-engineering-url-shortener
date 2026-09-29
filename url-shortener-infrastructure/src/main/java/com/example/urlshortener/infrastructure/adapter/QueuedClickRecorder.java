@@ -17,14 +17,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Records clicks off the redirect path (ASM-005 / ADR-016).
+ * Records clicks off the redirect path.
  *
- * <p>The redirect handler offers an event to a bounded queue and returns immediately; one
- * consumer thread drains the queue in batches. Two consequences are deliberate and are what the
- * bounded-queue choice buys: click counts are eventually consistent rather than immediate, and
- * under a flood the queue drops events (counted in {@link #dropped()}) instead of applying
- * back-pressure to redirects. Losing a count is the lesser harm compared with making every
- * redirect wait on the database.
+ * <p>The redirect handler offers an event to a bounded queue and returns; one consumer
+ * thread drains it in batches. So counts are eventually consistent, and under a flood the
+ * queue drops events rather than making redirects wait.
  */
 @Component
 public class QueuedClickRecorder implements ClickRecorder, SmartLifecycle {
@@ -134,8 +131,7 @@ public class QueuedClickRecorder implements ClickRecorder, SmartLifecycle {
             repository.saveAll(batch);
             persisted.addAndGet(batch.size());
         } catch (RuntimeException e) {
-            // A failed batch is lost rather than retried forever: analytics must never become a
-            // source of unbounded work or of redirect latency. The loss is counted and logged.
+            // Drop a failed batch rather than retrying forever; the loss is counted and logged.
             dropped.addAndGet(batch.size());
             log.warn("Dropped {} click event(s): {}", batch.size(), e.toString());
         }
@@ -143,7 +139,7 @@ public class QueuedClickRecorder implements ClickRecorder, SmartLifecycle {
 
     // ------------------------------------------------------------------ observability
 
-    /** Blocks until every queued event has been written, or the timeout elapses. Test/demo aid. */
+    /** Blocks until the queue is empty or the timeout passes. Test and demo helper. */
     public boolean awaitDrained(long timeoutMs) {
         long deadline = System.currentTimeMillis() + timeoutMs;
         while (System.currentTimeMillis() < deadline) {
@@ -176,7 +172,7 @@ public class QueuedClickRecorder implements ClickRecorder, SmartLifecycle {
         return queue.size();
     }
 
-    /** Readiness signal: a saturated queue means analytics are being lost. */
+    /** A full queue means clicks are being dropped. */
     public boolean isSaturated() {
         return queue.remainingCapacity() == 0;
     }

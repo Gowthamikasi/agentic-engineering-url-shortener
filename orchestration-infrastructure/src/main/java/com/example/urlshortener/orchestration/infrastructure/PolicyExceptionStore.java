@@ -11,8 +11,8 @@ import java.util.Optional;
 /**
  * Approved deviations from mandatory policy.
  *
- * <p>Stored separately from decisions because an exception outlives the run that requested it:
- * it has its own expiry and has to be re-checked by every later run that hits the same rule.
+ * <p>Kept apart from decisions because an exception outlives the run that asked for it: it has
+ * its own expiry and later runs re-check it.
  */
 @Repository
 public class PolicyExceptionStore {

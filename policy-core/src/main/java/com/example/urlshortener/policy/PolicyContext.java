@@ -7,11 +7,10 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * The facts a policy check may look at: artifacts the run produced, flags the engine set,
- * and the exceptions already approved for this run.
+ * The facts a policy check may look at, plus any exceptions already approved.
  *
- * <p>Checks read facts and nothing else. They have no database, no file system and no clock
- * of their own, which is what makes a policy verdict reproducible from the journal alone.
+ * <p>Checks read facts and nothing else: no database, no file system, no clock. That is what
+ * makes a verdict reproducible.
  */
 public final class PolicyContext {
 
@@ -64,7 +63,7 @@ public final class PolicyContext {
         }
     }
 
-    /** True when the key is absent entirely, which lets a check answer NOT_APPLICABLE honestly. */
+    /** True when the key is absent, which lets a check answer NOT_APPLICABLE honestly. */
     public boolean missing(String key) {
         return !facts.containsKey(key);
     }

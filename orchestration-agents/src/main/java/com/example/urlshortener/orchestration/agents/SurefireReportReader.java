@@ -12,19 +12,17 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 /**
- * Reads the real Surefire XML reports the build produced.
+ * Reads the Surefire XML the build produced.
  *
- * <p>The test-runner agent reports what the build actually produced rather than a number it made
- * up. That is the difference between evidence and decoration: if the reports are missing, this
- * returns an empty result and the agent fails the node, instead of quietly reporting a green run.
+ * <p>The test-runner agent reports these numbers rather than inventing them. No matching
+ * report means the node fails, instead of quietly reporting a green run.
  *
- * <p>Only Surefire output is read. Failsafe's directory holds the end-to-end suite, which can be
- * the run that is asking - reading a report while it is still being written yields garbage, and
- * a workflow grading the test that launched it is circular anyway.
+ * <p>Failsafe output is skipped on purpose: it can be the end-to-end run asking the
+ * question, and a half-written report parses as garbage.
  */
 public final class SurefireReportReader {
 
-    /** Aggregated counts across the matched report files. */
+    /** Totals across the reports that matched. */
     public record TestSummary(int tests, int failures, int errors, int skipped, List<String> suites) {
 
         public boolean isEmpty() {
@@ -46,7 +44,7 @@ public final class SurefireReportReader {
         this.projectRoot = projectRoot;
     }
 
-    /** @param suiteFilter applied to the fully qualified suite name, e.g. to select only contract tests */
+    /** @param suiteFilter applied to the suite name, to pick out one kind of test */
     public TestSummary read(Predicate<String> suiteFilter) {
         int tests = 0;
         int failures = 0;
@@ -57,8 +55,7 @@ public final class SurefireReportReader {
         for (Path report : findReportFiles()) {
             try {
                 DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-                // The reports are build output, but parsing XML with external entities enabled is
-                // never worth the convenience.
+                // Build output, but XML external entities are never worth enabling.
                 factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
                 factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
                 factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
@@ -75,7 +72,7 @@ public final class SurefireReportReader {
                 skipped += attr(suite, "skipped");
                 suites.add(name);
             } catch (Exception e) {
-                // A single unreadable report must not be silently treated as a pass.
+                // An unreadable report must not be counted as a pass.
                 suites.add("UNREADABLE:" + report.getFileName());
                 errors++;
             }
@@ -90,10 +87,7 @@ public final class SurefireReportReader {
         try (Stream<Path> paths = Files.walk(projectRoot, 6)) {
             return paths
                     .filter(Files::isRegularFile)
-                    // Surefire only. Failsafe's directory holds the end-to-end suite, which may be
-                    // the very run asking this question - a report being written while it is read
-                    // parses as garbage, and a workflow reporting on the test that started it is
-                    // circular besides.
+                    // Surefire only; see the class comment.
                     .filter(p -> {
                         String parent = p.getParent() == null ? "" : p.getParent().getFileName().toString();
                         return parent.equals("surefire-reports");

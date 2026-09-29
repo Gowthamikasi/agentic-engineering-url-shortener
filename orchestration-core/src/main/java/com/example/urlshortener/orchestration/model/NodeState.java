@@ -1,9 +1,6 @@
 package com.example.urlshortener.orchestration.model;
 
-/**
- * States a workflow node can occupy. Legal movement between them is defined once, in
- * {@code NodeStateMachine}, and every transition in the system goes through that table.
- */
+/** States a node can be in. Legal transitions live in one table in NodeStateMachine. */
 public enum NodeState {
 
     PENDING,
@@ -26,13 +23,13 @@ public enum NodeState {
     SUCCEEDED,
     FAILED;
 
-    /** Terminal for the purposes of the ready-set computation: no further work will be dispatched. */
+    /** No more work will be dispatched for this node. */
     public boolean isSettled() {
         return this == SUCCEEDED || this == APPROVED || this == SKIPPED
                 || this == FAILED || this == REJECTED || this == SAFE_STOPPED || this == BLOCKED;
     }
 
-    /** Counts as a satisfied dependency for a downstream node. */
+    /** Counts as a satisfied dependency downstream. */
     public boolean satisfiesDependency() {
         return this == SUCCEEDED || this == APPROVED || this == SKIPPED;
     }

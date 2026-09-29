@@ -4,10 +4,10 @@ import java.util.EnumSet;
 import java.util.Set;
 
 /**
- * Accepts a short code for <em>lookup</em> if any configured alphabet accepts it.
+ * Accepts a short code for lookup if any known alphabet accepts it.
  *
- * <p>This is the compatibility seam that lets the brownfield change (mint base58) ship without
- * breaking links that were minted as base62: minting narrows, lookup stays wide.
+ * <p>Minting narrows to one alphabet, lookup stays wide. That asymmetry is what lets the alphabet
+ * change without breaking codes already in the wild.
  */
 public final class ShortCodeValidator {
 

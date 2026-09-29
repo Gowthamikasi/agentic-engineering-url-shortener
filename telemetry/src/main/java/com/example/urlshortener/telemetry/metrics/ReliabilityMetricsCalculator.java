@@ -20,17 +20,14 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Derives reliability metrics, including MTTR, from the persisted journal.
+ * Works out reliability metrics, including MTTR, from the journal.
  *
- * <p>REQ-D-007 is the rule that shapes this class: MTTR is the mean over <em>recovered</em>
- * failures only, and failures that were never recovered are reported separately rather than
- * being folded in with a zero or with the run duration. Mixing them would make MTTR look
- * better exactly when the system behaved worse, so the two populations stay apart.
+ * <p>MTTR averages recovered failures only; unrecovered ones are reported separately (REQ-D-007).
+ * Folding them together would make MTTR look best exactly when things went worst.
  *
- * <p>A failure event opens on the first {@code NodeFailed}/{@code NodeTimedOut} for a node and
- * stays open until that same node reports {@code NodeSucceeded}. The first recovery-shaped
- * event in between (retry, rollback, compensation, fallback, or a human resume) records when
- * recovery began and by which mechanism.
+ * <p>A failure opens on the first NodeFailed or NodeTimedOut for a node and closes when that node
+ * reports NodeSucceeded. The first recovery-shaped event in between records when recovery started
+ * and how.
  */
 public final class ReliabilityMetricsCalculator {
 

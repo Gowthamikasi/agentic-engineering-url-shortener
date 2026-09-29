@@ -10,11 +10,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Loads a versioned policy set from the classpath or an external file.
+ * Loads a versioned policy set from the classpath or a file.
  *
- * <p>The file name carries the version and the loader refuses a set whose {@code version} field
- * disagrees with its own declaration, so a policy set cannot be edited in place and still claim
- * to be the version a past run was evaluated against.
+ * <p>The loader refuses a set whose version field disagrees with the version asked for, so a file
+ * cannot be edited in place and still claim to be what an old run was checked against.
  */
 public final class PolicySetLoader {
 

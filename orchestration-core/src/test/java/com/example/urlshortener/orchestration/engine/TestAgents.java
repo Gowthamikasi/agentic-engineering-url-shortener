@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** Agents that let a test drive the engine into a specific shape of success, failure, or delay. */
+/** Agents that drive the engine into a particular success, failure or delay. */
 final class TestAgents {
 
     private TestAgents() {
@@ -45,7 +45,7 @@ final class TestAgents {
         }
     }
 
-    /** Fails for the first {@code failTimes} attempts of each node, then succeeds. */
+    /** Fails the first {@code failTimes} attempts of each node, then succeeds. */
     static final class FlakyAgent implements StageAgent {
 
         private final String type;
@@ -95,7 +95,7 @@ final class TestAgents {
         }
     }
 
-    /** Sleeps past the node timeout so the engine's timeout path is exercised for real. */
+    /** Sleeps past the node timeout, so the timeout path runs for real. */
     static final class SlowAgent implements StageAgent {
 
         private final String type;
@@ -118,7 +118,7 @@ final class TestAgents {
         }
     }
 
-    /** Records when each node started and stopped, so overlap can be asserted rather than assumed. */
+    /** Records when each node started and stopped, so overlap can be asserted. */
     static final class OverlapProbeAgent implements StageAgent {
 
         record Window(String nodeId, Instant start, Instant end) {

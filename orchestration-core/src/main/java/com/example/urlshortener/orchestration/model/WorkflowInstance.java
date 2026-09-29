@@ -11,8 +11,8 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * One run of a workflow definition.
  *
- * <p>This is the materialised snapshot. The journal is the source of truth: everything here can be
- * rebuilt by replaying transition events, which is exactly what resume after a restart does.
+ * <p>This is the in-memory snapshot. The journal is the source of truth: everything here can be
+ * rebuilt by replaying its transition events.
  */
 public final class WorkflowInstance {
 

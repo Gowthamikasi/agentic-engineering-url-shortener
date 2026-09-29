@@ -44,10 +44,8 @@ public final class NodeRuntime {
     }
 
     /**
-     * Rollback reverts what the node produced but keeps its attempt history.
-     *
-     * <p>Clearing the counter here would be convenient and dishonest: the node really was attempted,
-     * and a journal that forgets it under-reports how much work a recovery cost.
+     * Rollback clears what the node produced but keeps the attempt count, so the journal still
+     * shows how many times it ran.
      */
     public void revertArtifacts() {
         artifactIds.clear();
@@ -55,7 +53,7 @@ public final class NodeRuntime {
         degraded = false;
     }
 
-    /** Replanning re-runs a node against different inputs, so its attempt series restarts. */
+    /** Replanning re-runs the node against different inputs, so the attempt series starts over. */
     public void resetForReplan() {
         attempts = 0;
         startedAt = null;

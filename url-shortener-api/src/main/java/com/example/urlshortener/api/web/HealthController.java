@@ -13,12 +13,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Liveness and readiness, aliased at short paths for convenience.
+ * Liveness and readiness.
  *
- * <p>The distinction is the point: liveness asks whether the process should be restarted, so it
- * checks only the JVM. Readiness asks whether this instance should receive traffic, so it checks
- * the database and whether the analytics queue has saturated — a saturated queue means clicks are
- * being dropped, which is a reason to shed traffic but not a reason to restart.
+ * <p>Liveness asks whether the process should be restarted, so it checks only the JVM.
+ * Readiness asks whether this instance should get traffic, so it also checks the database and
+ * whether the click queue has saturated. A saturated queue means clicks are being dropped:
+ * a reason to shed traffic, not to restart.
  */
 @RestController
 @RequestMapping("/health")

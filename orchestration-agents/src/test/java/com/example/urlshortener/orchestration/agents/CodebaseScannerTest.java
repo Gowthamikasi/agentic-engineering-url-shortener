@@ -11,12 +11,10 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The brownfield reasoning, tested against a real directory tree.
+ * The brownfield scan, against a real directory tree.
  *
- * <p>These use a temporary repository rather than this one, so the assertions stay true when files
- * here are renamed. The point being checked is the behaviour — that the scan names files that
- * actually exist and mention the requirement's vocabulary, and that it says so honestly when
- * nothing matches.
+ * <p>Uses a temporary repository rather than this one, so the assertions survive renames
+ * here.
  */
 class CodebaseScannerTest {
 
@@ -40,7 +38,7 @@ class CodebaseScannerTest {
                 "class ExpiryHandler { void expire() {} }");
         write(root, "url-shortener-infrastructure/src/main/resources/db/migration/V1__links.sql",
                 "CREATE TABLE links (code VARCHAR(16) PRIMARY KEY, expires_at TIMESTAMP);");
-        // Noise that must not be reported.
+        // Noise that must not show up in the results.
         write(root, "url-shortener-domain/src/test/java/AlphabetTest.java",
                 "class AlphabetTest { void base58_excludes_ambiguous_glyphs() {} }");
         write(root, "url-shortener-domain/target/classes/Alphabet.class", "compiled base58 alphabet");
@@ -87,8 +85,8 @@ class CodebaseScannerTest {
     }
 
     /**
-     * The honest-empty case. Returning a plausible-looking guess here would be worse than useless:
-     * it would read exactly like a real finding at the approval gate.
+     * A guess would read exactly like a real finding at the approval gate, so an empty scan
+     * has to report itself as empty.
      */
     @Test
     void an_unrelated_requirement_reports_nothing_rather_than_guessing(@TempDir Path root) throws IOException {

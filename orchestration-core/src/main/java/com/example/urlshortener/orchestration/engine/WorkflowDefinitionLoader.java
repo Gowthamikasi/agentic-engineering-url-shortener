@@ -12,16 +12,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Loads a workflow definition from JSON and validates it as a DAG before it can be run.
+ * Loads a workflow definition from JSON and checks it before the engine sees it.
  *
- * <p>Two checks run, in order. The schema rejects a definition that is malformed - an unknown
- * field, a misspelled enum, a retry budget of zero. The DAG validator then rejects one that is
- * well-formed but incoherent - a cycle, a dangling dependency. Schema first, because a
- * structurally broken file produces confusing graph errors.
- *
- * <p>Both run at load rather than at dispatch, because a bad graph discovered mid-run is
- * indistinguishable from a stalled scheduler: the ready set simply stays empty and nothing
- * explains why.
+ * <p>Two checks run in order. The schema catches a malformed file: an unknown field, a misspelled
+ * enum, a zero retry budget. The DAG validator then catches a well-formed file that cannot run:
+ * a cycle, a dangling dependency.
  */
 public final class WorkflowDefinitionLoader {
 

@@ -13,13 +13,13 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Validates and canonicalises a target URL before it is ever stored (ASM-014).
+ * Validates and canonicalises a target URL before it is stored (ASM-014).
  *
- * <p>The checks, in order, are: syntax, scheme allowlist, length, embedded credentials,
- * host suffix denylist, and finally address-level checks against every address the host
- * resolves to. Resolution happens at create time, so a name that points at a private
- * address is rejected before a short code exists for it, which is what keeps the redirect
- * endpoint from becoming an SSRF proxy into the host network.
+ * <p>Checks run in order: syntax, scheme allowlist, length, embedded credentials, host
+ * denylist, then every address the host resolves to.
+ *
+ * <p>Resolution happens at create time, so a host pointing somewhere private never gets a short
+ * code and there is nothing to follow later.
  */
 public final class UrlValidator {
 
@@ -112,7 +112,7 @@ public final class UrlValidator {
         return null;
     }
 
-    /** Loopback, link-local, site-local (RFC1918), multicast, wildcard, and IPv6 unique-local are all refused. */
+    /** Refuses loopback, link-local, RFC1918, multicast, wildcard, IPv6 unique-local and CGNAT. */
     public static boolean isNonPublic(InetAddress address) {
         if (address.isLoopbackAddress()
                 || address.isLinkLocalAddress()
@@ -132,7 +132,7 @@ public final class UrlValidator {
         return first == 100 && second >= 64 && second <= 127;
     }
 
-    /** Lower-cases scheme and host and drops a redundant default port; path and query are preserved verbatim. */
+    /** Lower-cases scheme and host and drops a default port. Path and query are left alone. */
     private static URI canonicalise(URI uri, String scheme, String lowerHost) {
         int port = uri.getPort();
         if (("http".equals(scheme) && port == 80) || ("https".equals(scheme) && port == 443)) {

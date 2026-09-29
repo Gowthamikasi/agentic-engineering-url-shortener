@@ -21,12 +21,11 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * A governed run driven entirely over HTTP, the way a reviewer or a pipeline would drive it.
+ * A governed run driven over HTTP, the way a reviewer or a pipeline would drive it.
  *
- * <p>The engine's own tests drive it in-process with stub agents. These drive the real workflow,
- * with the real agents, through the real API, which is the only way to show that the pieces line
- * up: that a run genuinely parks, that the decision endpoint is what releases it, and that the
- * audit trail written along the way verifies afterwards.
+ * <p>The engine's own tests use stub agents in-process. These use the real workflow, the real
+ * agents and the real API, so they show the pieces line up: the run parks, the decision
+ * endpoint releases it, and the audit trail verifies afterwards.
  */
 @Tag("e2e")
 @SpringBootTest(classes = Application.class,
@@ -93,8 +92,6 @@ class ControlPlaneE2ETest {
              "text":"Links should expire after a while and we should show popular links.",
              "dependencyScan":{"ran":true,"high":0}}""";
 
-    // ------------------------------------------------------------------ greenfield
-
     @Test
     void a_clear_requirement_runs_to_the_release_gate_and_completes_when_a_human_approves() {
         String runId = startRun(GREENFIELD).get("runId").asText();
@@ -103,8 +100,7 @@ class ControlPlaneE2ETest {
         assertThat(parked.get("state").asText()).isEqualTo("SUSPENDED");
         assertThat(node(parked, "release-gate").get("state").asText()).isEqualTo("AWAITING_APPROVAL");
 
-        // REQ-D-009: a complete requirement must not be stopped by a gate that exists only to
-        // look careful.
+        // REQ-D-009: a complete requirement must not be stopped by a gate.
         assertThat(node(parked, "clarify").get("state").asText()).isEqualTo("SKIPPED");
         assertThat(node(parked, "implement").get("state").asText()).isEqualTo("SUCCEEDED");
 
@@ -131,7 +127,7 @@ class ControlPlaneE2ETest {
         String policyEvalStart = null;
 
         for (JsonNode event : history) {
-            // Workflow-level rows carry no node id, and List.of(...).contains(null) throws.
+            // Workflow-level rows have no node id, and List.of(...).contains(null) throws.
             String nodeId = event.hasNonNull("nodeId") ? event.get("nodeId").asText() : "";
             String action = event.get("action").asText();
             String ts = event.get("ts").asText();
@@ -149,7 +145,7 @@ class ControlPlaneE2ETest {
 
         assertThat(starts).as("every verification sibling must have started").hasSize(siblings.size());
         assertThat(policyEvalStart).isNotNull();
-        // The join, stated as an ordering fact rather than an intention.
+        // The join, as an ordering fact.
         assertThat(lastSiblingSuccess).isLessThanOrEqualTo(policyEvalStart);
     }
 
@@ -184,8 +180,6 @@ class ControlPlaneE2ETest {
                 .contains("ingest:RawRequirement:v1");
     }
 
-    // ------------------------------------------------------------------ ambiguous
-
     @Test
     void a_vague_requirement_stops_at_the_clarification_gate_without_implementing_anything() {
         String runId = startRun(AMBIGUOUS).get("runId").asText();
@@ -194,7 +188,7 @@ class ControlPlaneE2ETest {
 
         assertThat(parked.get("state").asText()).isEqualTo("AWAITING_CLARIFICATION");
         assertThat(node(parked, "clarify").get("state").asText()).isEqualTo("AWAITING_APPROVAL");
-        // The whole point: it did not guess what "a while" means.
+        // The point of the scenario: it did not guess what "a while" means.
         assertThat(node(parked, "implement").get("attempts").asInt()).isZero();
         assertThat(node(parked, "implement").get("state").asText()).isEqualTo("PENDING");
     }
@@ -216,8 +210,6 @@ class ControlPlaneE2ETest {
         assertThat(run(runId).get("state").asText()).isEqualTo("COMPLETED");
     }
 
-    // ------------------------------------------------------------------ governance
-
     @Test
     void a_gate_cannot_be_decided_twice_and_refuses_an_unexplained_decision() {
         String runId = startRun(GREENFIELD).get("runId").asText();
@@ -231,7 +223,7 @@ class ControlPlaneE2ETest {
         assertThat(decide(runId, "release-gate", "READY", "A properly explained approval.")
                 .getStatusCode()).isEqualTo(HttpStatus.OK);
 
-        // The gate has been settled; deciding it again is a conflict, not a silent no-op.
+        // The gate is settled, so deciding again is a conflict rather than a no-op.
         ResponseEntity<String> again = rest.postForEntity(
                 url("/api/v1/workflows/" + runId + "/gates/release-gate/decision"),
                 request("{\"decision\":\"READY\",\"actor\":\"madhu\",\"rationale\":\"Trying again.\"}"),
@@ -251,7 +243,7 @@ class ControlPlaneE2ETest {
         assertThat(metrics.get("note").asText()).contains("not production statistics");
         assertThat(metrics.get("runs").get("total").asInt()).isPositive();
         assertThat(metrics.get("nodes").get("attempts").asInt()).isPositive();
-        // MTTR must never absorb failures that were never recovered.
+        // Unrecovered failures must stay out of MTTR.
         assertThat(metrics.get("recovery").has("unrecoveredFailureEvents")).isTrue();
     }
 

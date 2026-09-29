@@ -16,7 +16,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Locale;
 
-/** Reads: resolve for redirect, fetch metadata, delete, and aggregate click statistics. */
+/** Reads: resolve for redirect, fetch, delete, and aggregate clicks. */
 @Service
 public class LinkQueryService {
 
@@ -49,7 +49,7 @@ public class LinkQueryService {
         if (ExpiryPolicy.resolve(link, clock.instant()) == ExpiryPolicy.Resolution.GONE) {
             throw new LinkExpiredException(code);
         }
-        // Offer, never block: a full queue drops the count rather than delaying the redirect.
+        // Offer, never block. A full queue drops the count rather than slowing the redirect.
         clickRecorder.record(new ClickEvent(code, clock.instant(), refererHost(referer), classifyUserAgent(userAgent)));
         return link;
     }
@@ -62,10 +62,7 @@ public class LinkQueryService {
         return links.deleteByCode(code);
     }
 
-    /**
-     * Statistics remain available after expiry, so a caller can still see what a lapsed link did.
-     * Only the redirect stops working.
-     */
+    /** Statistics stay readable after a link expires; only the redirect stops working. */
     public LinkStats stats(String code, Instant from, Instant to) {
         requireLink(code);
         return clicks.statsFor(code, from, to);
@@ -78,7 +75,7 @@ public class LinkQueryService {
         return links.findByCode(code).orElseThrow(() -> new LinkNotFoundException(code));
     }
 
-    /** Only the host is kept: the full referer is a URL that may itself carry identifying data. */
+    /** Keep the host only. A full referer is a URL that may itself identify someone. */
     static String refererHost(String referer) {
         if (referer == null || referer.isBlank()) {
             return null;

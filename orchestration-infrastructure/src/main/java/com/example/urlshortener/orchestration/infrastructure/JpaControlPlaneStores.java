@@ -22,7 +22,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-/** JPA-backed implementations of the control-plane ports. */
+/** JPA implementations of the control-plane ports. */
 public final class JpaControlPlaneStores {
 
     private JpaControlPlaneStores() {
@@ -31,8 +31,8 @@ public final class JpaControlPlaneStores {
     /**
      * The transition journal.
      *
-     * <p>Every append commits in its own transaction. That is the point of the journal: an event
-     * describing what happened must survive even when the work that followed it does not.
+     * <p>Each append commits on its own, so the record of what happened survives even when the
+     * work that followed it does not.
      */
     @Repository
     public static class JpaJournal implements Journal {
@@ -81,7 +81,7 @@ public final class JpaControlPlaneStores {
         }
     }
 
-    /** Human decisions. A gate transition is only legitimate once a row exists here. */
+    /** Human decisions. A gate only changes state once a row exists here. */
     @Repository
     public static class JpaApprovalStore implements ApprovalStore {
 
@@ -121,7 +121,7 @@ public final class JpaControlPlaneStores {
         }
     }
 
-    /** Run headers, so a restarted process can enumerate runs without scanning the whole journal. */
+    /** Run headers, so a restarted process can list runs without reading the journal. */
     @Repository
     public static class JpaInstanceStore implements InstanceStore {
 
@@ -161,9 +161,8 @@ public final class JpaControlPlaneStores {
     /**
      * The audit trail.
      *
-     * <p>Appends are serialised per run so the hash chain stays well formed: each row commits to
-     * the previous row's hash, and two concurrent appends reading the same predecessor would fork
-     * the chain into two branches that both claim to follow it.
+     * <p>Appends are serialised per run so the hash chain stays a chain; two concurrent writes
+     * reading the same predecessor would fork it.
      */
     @Repository
     public static class JpaAuditSink implements AuditSink {

@@ -8,9 +8,7 @@ import java.util.Map;
 /**
  * What an agent reports back.
  *
- * <p>An agent states the failure class it believes applies; the engine may override it upward to
- * {@code PERMANENT} but never downward, so an agent cannot talk the engine into retrying
- * something the engine considers unsafe to repeat.
+ * <p>An agent can escalate a failure to PERMANENT but cannot talk the engine down to TRANSIENT.
  */
 public record StageResult(
         Outcome outcome,
@@ -25,7 +23,7 @@ public record StageResult(
         FAILURE
     }
 
-    /** An artifact an agent wants recorded; the engine assigns the id, version and hash. */
+    /** An artifact the agent wants recorded. The engine assigns the id, version and hash. */
     public record ArtifactDraft(String type, String contentJson, List<String> inputArtifactIds) {
 
         public ArtifactDraft {

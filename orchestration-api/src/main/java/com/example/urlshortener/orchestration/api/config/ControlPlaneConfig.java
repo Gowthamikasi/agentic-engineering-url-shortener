@@ -32,9 +32,8 @@ import java.util.List;
 /**
  * Wires the control plane.
  *
- * <p>Agents are declared here, as a list, so the set of things the engine is willing to execute is
- * visible in one place. An agent that is not in this list cannot be reached from a definition
- * file, which keeps a workflow definition from being a way to run arbitrary code.
+ * <p>Agents are listed here, so everything the engine is willing to run is visible in one place.
+ * An agent that is not on the list cannot be reached from a definition file.
  */
 @Configuration
 @EnableConfigurationProperties(OrchestrationProperties.class)

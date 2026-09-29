@@ -10,18 +10,16 @@ import java.util.Optional;
 /**
  * Everything an agent is allowed to see.
  *
- * <p>Note what is absent: no {@code DataSource}, no repository, no API key, no file-system root.
- * An agent receives artifact references and facts and returns artifacts and facts. That boundary
- * is what makes it safe to say an agent cannot reach outside its stage, and it is enforced by the
- * type rather than by convention.
+ * <p>Note what is missing: no DataSource, no repository, no API key. An agent gets artifact
+ * references and facts, and returns artifacts and facts.
  *
- * @param runId             correlation id for the whole run
+ * @param runId             correlation id for the run
  * @param nodeId            node being executed
- * @param attempt           1-based attempt number within this node's attempt series
+ * @param attempt           1-based attempt number
  * @param definitionVersion definition version this attempt belongs to
- * @param policyVersion     policy set version stamped on the run
+ * @param policyVersion     policy set stamped on the run
  * @param input             the original workflow input
- * @param upstreamArtifacts artifacts produced by satisfied dependencies
+ * @param upstreamArtifacts artifacts from satisfied dependencies
  * @param decisions         decisions recorded so far, newest last
  * @param assumptions       assumptions recorded so far
  * @param facts             accumulated facts, later handed to the policy evaluator

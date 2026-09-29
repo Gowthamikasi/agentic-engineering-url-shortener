@@ -15,10 +15,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * The clarification decision, pinned against the three scenario inputs.
  *
- * <p>REQ-D-009 cuts both ways and both directions are tested here: a clear requirement must not be
- * stopped by a gate that exists only to look careful, and a genuinely ambiguous one must not be
- * waved through. A system that asks about everything trains its reviewers to approve without
- * reading, which is worse than a system that never asks.
+ * <p>REQ-D-009 cuts both ways: a clear requirement must not be stopped, and a vague one must
+ * not be waved through. Both directions are tested.
  */
 class RequirementQualityAgentTest {
 
@@ -89,9 +87,8 @@ class RequirementQualityAgentTest {
     }
 
     /**
-     * Without this, the clarify gate would re-arm on every replan and the run would never
-     * terminate: the decision changes the requirement, the requirement is re-checked, and the
-     * check would ask the same question again.
+     * Without this the gate would re-arm on every replan and the run would never finish: the
+     * decision changes the requirement, the requirement is re-checked, and the check asks again.
      */
     @Test
     void once_a_clarification_decision_exists_the_gate_is_not_armed_again() {

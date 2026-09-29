@@ -22,9 +22,8 @@ public final class VerificationAgents {
     /**
      * Reports the results of the build's own test suites.
      *
-     * <p>It reads the Surefire and Failsafe XML the last build produced rather than inventing a
-     * number. If no report matches, the node fails: "no evidence" is reported as a failure, never
-     * as a pass.
+     * <p>Reads the Surefire XML from the last build rather than inventing a number. No matching
+     * report means the node fails.
      */
     public static class TestRunnerAgent implements StageAgent {
 
@@ -84,7 +83,7 @@ public final class VerificationAgents {
                     .build();
         }
 
-        /** Each node selects the slice of the build's suites that it is responsible for. */
+        /** Each node picks the slice of the build's suites it is responsible for. */
         static Predicate<String> filterFor(String nodeId) {
             return switch (nodeId) {
                 case "contract-tests" -> name -> name.contains("ContractTest");
@@ -106,12 +105,9 @@ public final class VerificationAgents {
     /**
      * Reports the security posture of the change.
      *
-     * <p>The controls this agent asserts are ones the codebase genuinely implements and tests
-     * cover. A dependency vulnerability scan is a different matter: no scanner runs in this
-     * prototype, so unless the run input supplies real scan results this agent reports that none
-     * ran. The policy set then raises an exception request, which a human has to decide. Reporting
-     * a clean scan that never happened would be exactly the fabricated evidence this system is
-     * supposed to make impossible.
+     * <p>The controls it lists are ones the code implements and tests cover. A dependency
+     * vulnerability scan is different: no scanner runs here, so unless the run supplies real
+     * results this reports that none ran, and the policy set asks a human about it.
      */
     public static class SecurityScanAgent implements StageAgent {
 
@@ -173,10 +169,8 @@ public final class VerificationAgents {
     /**
      * Regenerates documentation.
      *
-     * <p>This node is the run's non-blocking one: if it fails permanently the engine applies its
-     * declared fallback and the run completes with limitations rather than stopping. Documentation
-     * being stale is worth reporting loudly and shipping anyway; it is not worth blocking a
-     * release that is otherwise sound.
+     * <p>This is the run's non-blocking node: if it fails permanently the engine applies its
+     * fallback and the run completes with limitations rather than stopping.
      */
     public static class DocsAgent implements StageAgent {
 

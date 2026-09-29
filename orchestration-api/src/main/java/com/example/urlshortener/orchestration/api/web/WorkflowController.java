@@ -38,7 +38,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-/** Control-plane API: start runs, inspect them, decide at gates, and read the evidence. */
+/** Control-plane API: start runs, inspect them, decide gates, read the evidence. */
 @RestController
 @RequestMapping("/api/v1/workflows")
 public class WorkflowController {
@@ -60,14 +60,11 @@ public class WorkflowController {
         this.json = json;
     }
 
-    // ------------------------------------------------------------------ lifecycle
-
     /**
      * Starts a run.
      *
-     * <p>{@code waitMs} makes the call synchronous up to that budget, which is what the demo
-     * scripts use so a reviewer sees a settled run rather than having to poll. It changes nothing
-     * about how the run executes.
+     * <p>waitMs makes the call block until the run settles, which the demo scripts use so a
+     * reviewer sees a finished run instead of polling. It does not change how the run executes.
      */
     @PostMapping
     public ResponseEntity<WorkflowDto.RunSummary> start(
@@ -139,8 +136,6 @@ public class WorkflowController {
         return summaryOf(require(runId));
     }
 
-    // ------------------------------------------------------------------ gates
-
     @GetMapping("/{runId}/gates")
     public List<WorkflowDto.GateView> gates(@PathVariable String runId) {
         WorkflowInstance instance = require(runId);
@@ -166,8 +161,8 @@ public class WorkflowController {
     /**
      * Records a human decision.
      *
-     * <p>There is no endpoint that approves a gate on the caller's behalf, and no timer that does
-     * it either: this is the only way a gate moves forward (REQ-D-010).
+     * <p>This is the only way a gate moves forward. Nothing approves on the caller's behalf and
+     * no timer does it either (REQ-D-010).
      */
     @PostMapping("/{runId}/gates/{gateId}/decision")
     public ResponseEntity<WorkflowDto.DecisionView> decide(
@@ -185,15 +180,13 @@ public class WorkflowController {
         return ResponseEntity.ok(WorkflowDto.DecisionView.of(decision));
     }
 
-    // ------------------------------------------------------------------ evidence
-
-    /** The journal, which is the state-transition history in the order it happened. */
+    /** The transition journal, in the order it happened. */
     @GetMapping("/{runId}/history")
     public List<Map<String, Object>> history(@PathVariable String runId) {
         return journal.findByRun(runId).stream().map(WorkflowController::historyRow).toList();
     }
 
-    /** The audit trail, as JSON Lines, with a verification verdict on the hash chain. */
+    /** The audit trail as JSON Lines, with a header saying whether the hash chain verifies. */
     @GetMapping(value = "/{runId}/audit", produces = "application/x-ndjson")
     public ResponseEntity<String> auditTrail(@PathVariable String runId) {
         List<AuditEvent> events = audit.findByRun(runId);
@@ -215,10 +208,10 @@ public class WorkflowController {
     }
 
     /**
-     * Walks an artifact's provenance back to the original requirement.
+     * Walks an artifact back to the requirement it came from.
      *
-     * <p>This is the answer to "why does this exist?": every step names the node that produced it,
-     * the artifacts it consumed, and the decisions that were in force at the time.
+     * <p>Each step names the node that produced it, what it consumed, and the decisions in
+     * force at the time.
      */
     @GetMapping("/{runId}/lineage/{artifactId}")
     public WorkflowDto.LineageResponse lineage(@PathVariable String runId, @PathVariable String artifactId) {
@@ -252,7 +245,7 @@ public class WorkflowController {
         return new WorkflowDto.LineageResponse(runId, artifactId, List.copyOf(chain), decisions);
     }
 
-    /** The graph, as Mermaid, coloured by what each node actually did. */
+    /** The graph as Mermaid, coloured by what each node actually did. */
     @GetMapping(value = "/{runId}/graph", produces = MediaType.TEXT_PLAIN_VALUE)
     public String graph(@PathVariable String runId,
                         @RequestParam(value = "format", defaultValue = "mermaid") String format) {
@@ -287,8 +280,6 @@ public class WorkflowController {
         return mermaid.toString();
     }
 
-    // ------------------------------------------------------------------ helpers
-
     private WorkflowInstance require(String runId) {
         return engine.find(runId)
                 .orElseThrow(() -> new IllegalArgumentException("No such run: " + runId));
@@ -304,7 +295,7 @@ public class WorkflowController {
                         "artifacts", base + "/artifacts"));
     }
 
-    /** Which dependencies a pending node is still waiting for — the synchronisation evidence. */
+    /** Which dependencies a pending node is still waiting for. */
     private static List<String> waitingOn(WorkflowInstance instance, NodeDefinition node) {
         if (instance.node(node.id()).state() != NodeState.PENDING) {
             return List.of();

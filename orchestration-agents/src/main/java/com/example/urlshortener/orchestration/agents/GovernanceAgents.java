@@ -29,10 +29,8 @@ public final class GovernanceAgents {
     /**
      * Evaluates the versioned policy set over everything the run produced.
      *
-     * <p>A mandatory failure is returned as a node <em>failure</em>, not as a successful node with
-     * a bad-news artifact. That is what makes the block real: the release gate downstream is
-     * blocked by the engine's own dependency rule rather than by a human noticing a field in a
-     * report.
+     * <p>A mandatory failure comes back as a node failure, so the release gate downstream is
+     * blocked by the engine's dependency rule rather than by someone spotting a field in a report.
      */
     public static class PolicyEvaluationAgent implements StageAgent {
 
@@ -99,7 +97,7 @@ public final class GovernanceAgents {
         }
     }
 
-    /** Assembles the per-run engineering summary from what the run actually recorded. */
+    /** Assembles the run summary from what the run actually recorded. */
     public static class SummaryAgent implements StageAgent {
 
         private final ObjectMapper json;

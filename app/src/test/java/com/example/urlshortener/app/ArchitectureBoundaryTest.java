@@ -11,12 +11,10 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
- * The module boundaries, asserted rather than documented.
+ * The module boundaries, checked rather than described.
  *
- * <p>Every claim this project makes about separation — two planes that do not know about each
- * other, a domain free of framework coupling, controllers that go through services — is only worth
- * as much as the thing that stops it eroding. These rules are that thing; they fail the build, not
- * a review comment six months later.
+ * <p>These rules fail the build if either plane grows a dependency on the other, if the domain
+ * picks up Spring or JPA, or if a controller reaches past its services.
  */
 class ArchitectureBoundaryTest {
 

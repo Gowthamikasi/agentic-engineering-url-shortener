@@ -1,9 +1,10 @@
 package com.example.urlshortener.policy;
 
 /**
- * REQ-D-004: the outcome vocabulary is closed. There is no "warning" and no "skipped" —
- * a check that does not apply to this run says so explicitly, which keeps the evaluation
- * summary countable and stops advisory findings from quietly disappearing.
+ * The four possible outcomes (REQ-D-004).
+ *
+ * <p>There is no "warning" and no "skipped": a check that does not apply says so, which keeps the
+ * counts meaningful.
  */
 public enum PolicyOutcome {
     PASS,

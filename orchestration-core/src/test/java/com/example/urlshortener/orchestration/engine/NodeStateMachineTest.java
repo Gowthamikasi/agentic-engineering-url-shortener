@@ -7,11 +7,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * The prohibited transitions.
+ * The transitions that are not allowed.
  *
- * <p>These are the negative tests that give the governance claims their teeth. Each one asserts
- * that a specific shortcut — approving without a decision, retrying past the budget, resurrecting
- * a failed node — is simply not expressible.
+ * <p>These are the negative tests behind the governance claims: approving without a decision,
+ * retrying past the budget and reviving a failed node are simply not expressible.
  */
 class NodeStateMachineTest {
 

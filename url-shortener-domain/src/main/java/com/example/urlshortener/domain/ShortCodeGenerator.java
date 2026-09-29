@@ -4,10 +4,9 @@ import java.security.SecureRandom;
 import java.util.random.RandomGenerator;
 
 /**
- * Mints random short codes (ASM-003: length 7, cryptographically strong source).
+ * Mints random short codes: length 7, from SecureRandom (ASM-003).
  *
- * <p>The alphabet is injected rather than hard-coded so the brownfield scenario can flip
- * base62 to base58 behind a configuration flag without touching call sites.
+ * <p>The alphabet is injected rather than hard-coded, so it can be changed by configuration.
  */
 public final class ShortCodeGenerator {
 

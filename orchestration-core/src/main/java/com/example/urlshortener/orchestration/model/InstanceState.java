@@ -1,10 +1,6 @@
 package com.example.urlshortener.orchestration.model;
 
-/**
- * States of a whole run. {@code SUSPENDED} and {@code AWAITING_CLARIFICATION} are resumable;
- * the rest are terminal, and which terminal state a run lands in is deterministic given its
- * journal.
- */
+/** States of a whole run. SUSPENDED and AWAITING_CLARIFICATION can be resumed; the rest are final. */
 public enum InstanceState {
 
     CREATED,

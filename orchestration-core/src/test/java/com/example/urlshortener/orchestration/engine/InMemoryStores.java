@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-/** In-memory ports so the engine's behaviour can be tested without a database. */
+/** In-memory ports, so engine behaviour can be tested without a database. */
 final class InMemoryStores {
 
     private InMemoryStores() {
@@ -102,7 +102,7 @@ final class InMemoryStores {
         }
     }
 
-    /** Keeps the real hash chain so tests can assert the audit trail is verifiable, not just present. */
+    /** Keeps the real hash chain, so tests can check the trail verifies rather than just exists. */
     static final class MemoryAuditSink implements AuditSink {
 
         private final List<AuditEvent> events = new CopyOnWriteArrayList<>();

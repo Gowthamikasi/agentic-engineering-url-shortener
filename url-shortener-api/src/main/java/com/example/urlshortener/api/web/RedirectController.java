@@ -12,13 +12,13 @@ import org.springframework.web.bind.annotation.RestController;
 import java.net.URI;
 
 /**
- * The public redirect endpoint — the only route that serves anonymous traffic.
+ * The public redirect endpoint, and the only route that serves anonymous traffic.
  *
- * <p>302 rather than 301 (ASM-009): a permanent redirect would be cached by browsers and
- * intermediaries, and the clicks that never reach the server cannot be counted.
+ * <p>302 rather than 301: a permanent redirect gets cached, and a click that never reaches
+ * the server cannot be counted.
  *
- * <p>The {@code Location} value comes from the stored, canonicalised target and never from
- * anything on the incoming request, so this endpoint cannot be turned into an open redirector.
+ * <p>The Location value comes from the stored target, never from the request, so this cannot
+ * be used as an open redirector.
  */
 @RestController
 public class RedirectController {

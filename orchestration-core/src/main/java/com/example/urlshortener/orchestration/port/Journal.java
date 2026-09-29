@@ -5,10 +5,9 @@ import com.example.urlshortener.orchestration.model.TransitionEvent;
 import java.util.List;
 
 /**
- * Append-only transition journal — the source of truth for a run.
+ * The append-only transition journal, and the source of truth for a run.
  *
- * <p>There is no update and no delete. The snapshot the API serves is derived from these rows, so
- * a run can be reconstructed after a restart by replaying them.
+ * <p>There is no update or delete. The snapshot the API serves is derived from these rows.
  */
 public interface Journal {
 

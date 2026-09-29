@@ -50,23 +50,13 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * The control plane: executes a workflow definition as a governed dependency graph.
+ * Runs a workflow definition as a dependency graph.
  *
- * <p>The scheduling rule is one sentence — a node runs when every dependency it declared is
- * satisfied, its branch condition holds, and nothing upstream of it has blocked. Everything else
- * the engine does follows from that rule: parallelism is what happens when the rule admits more
- * than one node at a time, a join is what happens when it admits none until the last sibling
- * finishes, and a skipped branch is the rule declining a node whose condition is false.
+ * <p>A node starts when its dependencies are satisfied, its branch condition holds and
+ * nothing upstream has blocked. Parallel execution, joins and skipped branches all fall
+ * out of that one rule.
  *
- * <p>Four properties are deliberate and are the ones worth checking against the tests:
- * <ul>
- *   <li>Retry is owned here, not by agents, so the journal's attempt count is the truth.</li>
- *   <li>A gate never advances on a timer. The approval timeout leads to {@code SAFE_STOPPED}
- *       and there is no code path from a timeout to an approved state.</li>
- *   <li>Every state change is journalled before it is acted on, so a run can be rebuilt.</li>
- *   <li>Replanning invalidates the downstream closure of what changed, rather than restarting the
- *       run, so work that was not affected keeps its result and its approval.</li>
- * </ul>
+ * <p>The engine owns retry, timeout and recovery. Agents just do the work and report back.
  */
 public class WorkflowEngine implements AutoCloseable {
 
@@ -102,9 +92,9 @@ public class WorkflowEngine implements AutoCloseable {
         this.executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("orchestrator-", 0).factory());
     }
 
-    // ================================================================ public API
+    // ---------------------------------------------------------------- public API
 
-    /** Validates the definition, creates the run, and starts executing it in the background. */
+    /** Validates the definition, creates the run and starts it on a background thread. */
     public WorkflowInstance start(WorkflowDefinition definition, Map<String, Object> input, String policyVersion) {
         DagValidator.validate(definition);
 
@@ -134,10 +124,10 @@ public class WorkflowEngine implements AutoCloseable {
     }
 
     /**
-     * Records a human decision on a gate and moves the run on.
+     * Records a human decision and moves the gate on.
      *
-     * <p>The decision row is written before the node transitions, so a state change can never
-     * exist without the decision that justified it.
+     * <p>The decision row is saved before the node changes state, so there is never a state
+     * change without the decision behind it.
      */
     public Decision decide(String runId, String gateId, String decisionValue, String actor,
                            String rationale, String conditions) {
@@ -197,14 +187,13 @@ public class WorkflowEngine implements AutoCloseable {
         return decision;
     }
 
-    /** Human resume of a suspended or safe-stopped run. */
+    /** Restarts a suspended or safe-stopped run. */
     public void resume(String runId, String actor, String reason) {
         WorkflowInstance instance = require(runId);
         if (instance.state() == InstanceState.REJECTED) {
             throw new IllegalStateException("A rejected run cannot be resumed.");
         }
-        // Both the stopped node and everything it blocked go back to pending: resuming a run that
-        // left its downstream subgraph blocked would look like a resume and behave like a no-op.
+        // Blocked nodes go back to pending too, or the resume would do nothing.
         instance.nodes().stream()
                 .filter(n -> n.state() == NodeState.SAFE_STOPPED || n.state() == NodeState.BLOCKED)
                 .forEach(n -> transition(instance, n.id(), NodeState.PENDING, AuditActions.WORKFLOW_RESUMED,
@@ -217,7 +206,7 @@ public class WorkflowEngine implements AutoCloseable {
         schedule(instance);
     }
 
-    /** Operator safe-stop: running siblings are left to finish, nothing new is dispatched. */
+    /** Stops dispatching new work. Nodes already running are left to finish. */
     public void safeStop(String runId, String actor, String reason) {
         WorkflowInstance instance = require(runId);
         instance.nodes().stream()
@@ -229,10 +218,9 @@ public class WorkflowEngine implements AutoCloseable {
     }
 
     /**
-     * Safe-stops gates that have waited longer than the approval timeout.
+     * Safe-stops any gate that has waited longer than the approval timeout.
      *
-     * <p>This is the only thing the timeout does. Silence is never consent (REQ-D-010), so there
-     * is no branch here that approves anything.
+     * <p>A timeout can only stop a run, never approve one (REQ-D-010).
      */
     public int expireApprovals() {
         int expired = 0;
@@ -263,7 +251,7 @@ public class WorkflowEngine implements AutoCloseable {
         return expired;
     }
 
-    /** Blocks until the run stops making progress — it is terminal, or parked at a gate. */
+    /** Blocks until the run is finished or parked at a gate. */
     public boolean awaitQuiescence(String runId, long timeoutMs) {
         long deadline = System.currentTimeMillis() + timeoutMs;
         while (System.currentTimeMillis() < deadline) {
@@ -297,7 +285,7 @@ public class WorkflowEngine implements AutoCloseable {
         }
     }
 
-    // ================================================================ scheduling
+    // ---------------------------------------------------------------- scheduling
 
     private void schedule(WorkflowInstance instance) {
         runLoops.compute(instance.runId(), (id, existing) -> {
@@ -309,12 +297,10 @@ public class WorkflowEngine implements AutoCloseable {
     }
 
     /**
-     * The scheduler loop.
+     * The scheduler loop: work out what can run, dispatch it, wait for the whole wave, repeat.
      *
-     * <p>Each pass computes the ready set and dispatches all of it at once. Waiting for the whole
-     * wave before recomputing is what makes the join observable: {@code policy-eval} cannot become
-     * ready until the last of its siblings has finished, and the journal shows the sibling
-     * intervals overlapping.
+     * <p>Waiting for the full wave is what makes joins work. A node with several dependencies
+     * only becomes ready once the last of them has finished.
      */
     private void runLoop(WorkflowInstance instance) {
         MDC.put("runId", instance.runId());
@@ -356,7 +342,7 @@ public class WorkflowEngine implements AutoCloseable {
         }
     }
 
-    /** @return true when the loop should exit (run parked at a gate, or finished) */
+    /** @return true when the loop should stop, because the run is parked at a gate or finished */
     private boolean parkOrFinish(WorkflowInstance instance) {
         boolean awaitingApproval = instance.nodes().stream()
                 .anyMatch(n -> n.state() == NodeState.AWAITING_APPROVAL);
@@ -384,10 +370,10 @@ public class WorkflowEngine implements AutoCloseable {
     }
 
     /**
-     * Computes which nodes may start now.
+     * Finds the nodes that can start now.
      *
-     * <p>Nodes whose branch condition is false are marked {@code SKIPPED} here rather than being
-     * silently ignored, so the graph endpoint can show the path not taken.
+     * <p>A node whose branch condition is false is marked SKIPPED rather than ignored, so the
+     * graph still shows the path that was not taken.
      */
     private synchronized List<NodeDefinition> computeReadySet(WorkflowInstance instance) {
         List<NodeDefinition> ready = new ArrayList<>();
@@ -433,7 +419,7 @@ public class WorkflowEngine implements AutoCloseable {
         return unmet;
     }
 
-    /** A dependency that settled without succeeding blocks this node, if it was blocking. */
+    /** True when a dependency finished without succeeding and was marked blocking. */
     private boolean isBlockedUpstream(WorkflowInstance instance, NodeDefinition node) {
         for (String dependencyId : node.dependsOn()) {
             NodeState state = instance.node(dependencyId).state();
@@ -450,14 +436,13 @@ public class WorkflowEngine implements AutoCloseable {
         return false;
     }
 
-    // ================================================================ node execution
+    // ---------------------------------------------------------------- node execution
 
     /**
-     * Runs one node, including its retry series.
+     * Runs one node, retrying while the failure is transient and the budget allows.
      *
-     * <p>Retries live here, in the engine, rather than inside the agent. An agent that retried
-     * internally would make {@code attempts} in the journal meaningless and would hide a repeated
-     * side effect behind a single apparent attempt.
+     * <p>Retry lives here rather than inside the agent, so the attempt count in the journal
+     * matches what actually happened.
      */
     private void executeNodeWithRetries(WorkflowInstance instance, NodeDefinition node) {
         while (true) {
@@ -469,13 +454,10 @@ public class WorkflowEngine implements AutoCloseable {
 
             Attempt outcome = runAttempt(instance, node, attempt);
 
-
             if (outcome.succeeded()) {
                 applyResult(instance, node, outcome.result());
 
-                // The exit gate. An agent reporting success is a claim; the declared output is the
-                // evidence. Accepting the claim without the evidence is how a stage silently
-                // produces nothing and every downstream node works from a gap.
+                // Exit gate: the agent says it succeeded, so check it produced what it declared.
                 List<String> missing = missingExitArtifacts(instance, node);
                 if (missing.isEmpty()) {
                     instance.node(node.id()).markEnded(clock.instant());
@@ -489,12 +471,11 @@ public class WorkflowEngine implements AutoCloseable {
                 record(instance, node.id(), NodeState.RUNNING, NodeState.RUNNING,
                         AuditActions.EXIT_GATE_FAILED, ActorType.ENGINE, "engine", "ExitGateFailed",
                         reason, null);
-                // A missing declared output is a defect in the node, not a blip: retrying it would
-                // repeat the same gap, so it is permanent regardless of what the agent claimed.
+                // A missing output will not appear on a retry, so do not spend the budget.
                 outcome = Attempt.failed(FailureClass.PERMANENT, false, reason, outcome.result());
             }
 
-            // Record whatever the failed attempt still produced, so a failure leaves evidence.
+            // Keep whatever the failed attempt produced, so there is something to look at.
             if (outcome.result() != null) {
                 applyResult(instance, node, outcome.result());
             }
@@ -522,7 +503,7 @@ public class WorkflowEngine implements AutoCloseable {
         }
     }
 
-    /** One attempt, bounded by the node's timeout. */
+    /** Runs a single attempt, bounded by the node's timeout. */
     private Attempt runAttempt(WorkflowInstance instance, NodeDefinition node, int attempt) {
         StageAgent agent = agents.get(node.agentType());
         if (agent == null) {
@@ -570,7 +551,7 @@ public class WorkflowEngine implements AutoCloseable {
         }
     }
 
-    /** Wraps a checked agent exception so it survives the CompletableFuture boundary. */
+    /** Carries a checked agent exception across the CompletableFuture boundary. */
     private static final class CompletionFailure extends RuntimeException {
 
         CompletionFailure(Throwable cause) {
@@ -578,7 +559,7 @@ public class WorkflowEngine implements AutoCloseable {
         }
     }
 
-    /** Result of one attempt. */
+    /** Outcome of one attempt. */
     private record Attempt(StageResult result, FailureClass failureClass, boolean timedOut, String message) {
 
         static Attempt succeeded(StageResult result) {
@@ -604,7 +585,7 @@ public class WorkflowEngine implements AutoCloseable {
                 instance.assumptions(), instance.facts());
     }
 
-    /** Records the artifacts, facts and assumptions an attempt produced. */
+    /** Stores the artifacts, facts and assumptions an attempt produced. */
     private void applyResult(WorkflowInstance instance, NodeDefinition node, StageResult result) {
         for (StageResult.ArtifactDraft draft : result.artifacts()) {
             int version = instance.artifacts().stream()
@@ -626,14 +607,7 @@ public class WorkflowEngine implements AutoCloseable {
         result.assumptions().forEach(instance::addAssumption);
     }
 
-
-    /**
-     * Artifact types the node declared it produces but did not.
-     *
-     * <p>Types, not ids: the definition states what kind of thing a stage owes the run, and the
-     * engine assigns the identity. A node with no declared output has no exit gate and passes
-     * trivially.
-     */
+    /** Artifact types the node declared but did not produce. Empty if it declares none. */
     private static List<String> missingExitArtifacts(WorkflowInstance instance, NodeDefinition node) {
         if (!node.hasExitGate()) {
             return List.of();
@@ -648,11 +622,11 @@ public class WorkflowEngine implements AutoCloseable {
     }
 
     /**
-     * Applies the node's declared recovery mode after a failure that will not be retried.
+     * Runs the node's declared recovery after a failure that will not be retried.
      *
-     * <p>The rollback / compensation split is classified per node in the definition rather than
-     * inferred here. Guessing would be worse than useless: calling something rollbackable when a
-     * side effect has already been observed is exactly the error that makes an audit trail lie.
+     * <p>Whether a node is rollbackable or compensatable comes from the definition. The engine
+     * never guesses, because getting it wrong means the audit trail records an undo that did
+     * not happen.
      */
     private void applyRecovery(WorkflowInstance instance, NodeDefinition node, Attempt outcome) {
         if (node.fallbackAllowed()) {
@@ -700,7 +674,7 @@ public class WorkflowEngine implements AutoCloseable {
         return Math.max(1, Math.round(base + jitter));
     }
 
-    // ================================================================ gates
+    // ---------------------------------------------------------------- gates
 
     private void armGate(WorkflowInstance instance, NodeDefinition node) {
         transition(instance, node.id(), NodeState.READY, AuditActions.NODE_READY,
@@ -739,19 +713,17 @@ public class WorkflowEngine implements AutoCloseable {
         return runId + "\u0000" + nodeId;
     }
 
-    // ================================================================ replanning
+    // ---------------------------------------------------------------- replanning
 
     private static boolean supersedesUpstream(NodeDefinition gateNode) {
         return gateNode.supersedes() != null && !gateNode.supersedes().isBlank();
     }
 
     /**
-     * Invalidates everything downstream of a superseded node and regenerates it under a new
+     * Invalidates everything downstream of a superseded node and re-runs it under a new
      * definition version.
      *
-     * <p>Work that did not consume the changed artifact keeps its result — and, importantly, keeps
-     * its approval. Restarting the whole run instead would be simpler to implement and would throw
-     * away human decisions that are still valid, which is the opposite of preserving governance.
+     * <p>Nodes that did not consume the changed artifact keep their result, and their approval.
      */
     public void replan(WorkflowInstance instance, String supersededNodeId, String reason) {
         long fromVersion = instance.definitionVersion();
@@ -787,7 +759,7 @@ public class WorkflowEngine implements AutoCloseable {
                         + ",\"invalidatedNodes\":" + jsonArray(invalidated) + "}");
     }
 
-    /** Transitive set of nodes that depend, directly or indirectly, on the given node. */
+    /** Nodes that depend on the given node, directly or indirectly. */
     static Set<String> downstreamClosure(WorkflowDefinition definition, String nodeId) {
         Set<String> closure = new LinkedHashSet<>();
         Set<String> frontier = new HashSet<>(Set.of(nodeId));
@@ -806,14 +778,11 @@ public class WorkflowEngine implements AutoCloseable {
         return closure;
     }
 
-    // ================================================================ completion
+    // ---------------------------------------------------------------- completion
 
     /**
-     * Picks the terminal outcome.
-     *
-     * <p>A run that only finished because a node fell back to a degraded result is reported as
-     * {@code COMPLETED_WITH_LIMITATIONS}, not {@code COMPLETED}. Collapsing the two would hide
-     * exactly the information a release decision needs.
+     * Works out the terminal state. A run that only finished because a node fell back is
+     * reported as COMPLETED_WITH_LIMITATIONS rather than COMPLETED.
      */
     private void finalizeRun(WorkflowInstance instance) {
         List<NodeRuntime> nodes = instance.nodes();
@@ -858,9 +827,9 @@ public class WorkflowEngine implements AutoCloseable {
         };
     }
 
-    // ================================================================ journal + audit
+    // ---------------------------------------------------------------- journal and audit
 
-    /** Validates the transition, then journals and audits it before the new state is visible. */
+    /** Checks the transition is legal, journals it, then applies it. */
     private synchronized void transition(WorkflowInstance instance, String nodeId, NodeState to,
                                          String action, ActorType actorType, String actorId,
                                          String result, String reason) {
@@ -902,7 +871,7 @@ public class WorkflowEngine implements AutoCloseable {
                 instance.input().toString()));
     }
 
-    // ================================================================ helpers
+    // ---------------------------------------------------------------- helpers
 
     private WorkflowInstance require(String runId) {
         WorkflowInstance instance = live.get(runId);
@@ -913,13 +882,10 @@ public class WorkflowEngine implements AutoCloseable {
     }
 
     /**
-     * Artifacts reaching this node, looking through dependencies that produced none.
+     * Artifacts feeding this node.
      *
-     * <p>A gate produces no artifact, and a skipped node produces none either. Stopping at the
-     * direct dependencies would mean a gate severs provenance: everything downstream of a release
-     * gate would have an empty input list and its lineage would end one step from where it started.
-     * So an artifact-less dependency is looked through to its own dependencies, and provenance
-     * survives the gate.
+     * <p>A dependency that produced nothing (a gate, a skipped node) is looked through to its
+     * own dependencies, so lineage is not cut off at a gate.
      */
     private static List<String> upstreamArtifactIdsOf(WorkflowInstance instance, NodeDefinition node) {
         List<String> ids = new ArrayList<>();

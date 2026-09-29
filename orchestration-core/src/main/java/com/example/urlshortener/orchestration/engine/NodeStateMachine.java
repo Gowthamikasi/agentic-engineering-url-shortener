@@ -8,14 +8,11 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The single place where node transitions are allowed or refused.
+ * The one place node transitions are allowed or refused.
  *
- * <p>The table is exhaustive and closed: any movement not listed throws. That matters more than it
- * might look. Several of the guarantees this system claims — that a gate cannot be approved
- * without a human decision, that a node cannot be retried past its budget, that a failed node
- * cannot quietly become successful — are not enforced by scattered {@code if} statements but by
- * the absence of an edge here. A future change that wants one of those transitions has to add it
- * to this table, in the open, where the tests will see it.
+ * <p>The table is closed: anything not listed throws. Several governance rules are enforced by a
+ * missing edge rather than by a check somewhere else, so changing one means editing this table
+ * where the tests will notice.
  */
 public final class NodeStateMachine {
 

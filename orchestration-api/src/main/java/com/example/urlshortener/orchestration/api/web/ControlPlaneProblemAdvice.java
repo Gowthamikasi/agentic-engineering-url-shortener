@@ -24,17 +24,14 @@ public class ControlPlaneProblemAdvice {
                 message, missing ? "NOT_FOUND" : "INVALID_REQUEST");
     }
 
-    /** Deciding on a gate that is not awaiting a decision is a conflict, not a server error. */
+    /** Deciding on a gate that is not waiting for a decision is a conflict, not a server error. */
     @ExceptionHandler(IllegalStateException.class)
     public ProblemDetail onConflict(IllegalStateException e) {
         return problem(HttpStatus.CONFLICT, "Action conflicts with the current state",
                 e.getMessage(), "STATE_CONFLICT");
     }
 
-    /**
-     * An illegal transition reaching the API means the engine refused something it was asked to do.
-     * It surfaces as a 409 with the exact transition named, rather than as an opaque 500.
-     */
+    /** The engine refused a transition. Surfaced as a 409 naming it, rather than an opaque 500. */
     @ExceptionHandler(NodeStateMachine.IllegalTransitionException.class)
     public ProblemDetail onIllegalTransition(NodeStateMachine.IllegalTransitionException e) {
         return problem(HttpStatus.CONFLICT, "Illegal state transition", e.getMessage(), "ILLEGAL_TRANSITION");

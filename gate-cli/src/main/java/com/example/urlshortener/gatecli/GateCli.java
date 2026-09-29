@@ -31,6 +31,19 @@ import java.util.concurrent.Callable;
 @Command(name = "gate-cli", mixinStandardHelpOptions = true, version = "1.0.0",
         description = "Inspect and decide human approval gates on a workflow run.",
         subcommands = {GateCli.ListGates.class, GateCli.Decide.class, GateCli.Resume.class, GateCli.Status.class})
+/**
+ * Command-line client for the approval API (ADR-008).
+ *
+ * <p>Deliberately thin: it posts to the same endpoint a person would, and can do nothing the
+ * API would refuse.
+ *
+ * <pre>
+ *   java -jar gate-cli.jar list   --run run_123
+ *   java -jar gate-cli.jar decide --run run_123 --gate release-gate --decision READY \
+ *                                 --actor madhu --rationale "All policies pass."
+ *   java -jar gate-cli.jar resume --run run_123 --actor madhu --reason "Rollback confirmed."
+ * </pre>
+ */
 public class GateCli {
 
     /** Shared connection options. */
@@ -208,7 +221,7 @@ public class GateCli {
         return send(request);
     }
 
-    /** Prints the server's problem detail rather than a stack trace when a call is refused. */
+    /** Prints the server's problem detail instead of a stack trace when a call is refused. */
     private static JsonNode send(HttpRequest request) throws Exception {
         HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() >= 400) {

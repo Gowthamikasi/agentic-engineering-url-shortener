@@ -18,11 +18,10 @@ import java.net.URI;
 import java.util.Optional;
 
 /**
- * Authenticates {@code X-Api-Key} and enforces the scope each protected route needs.
+ * Checks X-Api-Key and the scope each protected route needs.
  *
- * <p>The redirect endpoint is deliberately public — it is the one surface a shortener must expose
- * to anonymous traffic. Everything that creates data, reads another caller's data, or touches the
- * control plane requires a key.
+ * <p>The redirect endpoint is public, because that is the one surface a shortener has to
+ * expose. Everything else needs a key.
  */
 public class ApiKeyFilter extends OncePerRequestFilter {
 
@@ -61,7 +60,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
-    /** @return the scope this request needs, or {@code null} when the route is public. */
+    /** @return the scope this route needs, or null when it is public */
     static Scope requiredScope(HttpServletRequest request) {
         String path = request.getRequestURI();
         String method = request.getMethod();

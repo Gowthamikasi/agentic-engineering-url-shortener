@@ -9,10 +9,8 @@ import java.util.concurrent.TimeoutException;
 /**
  * Decides whether a failure is worth retrying.
  *
- * <p>The default is {@code PERMANENT}. That is the safe direction: misclassifying a transient
- * fault as permanent costs one human decision, while misclassifying a permanent fault as
- * transient burns the retry budget repeating something that cannot succeed — and, for a node with
- * side effects, repeats the side effect.
+ * <p>The default is PERMANENT. Getting it wrong that way costs one human decision; the other way
+ * burns the retry budget repeating something that cannot work.
  */
 public final class FailureClassifier {
 

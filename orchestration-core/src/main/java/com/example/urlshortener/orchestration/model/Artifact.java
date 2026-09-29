@@ -6,10 +6,8 @@ import java.util.List;
 /**
  * A versioned output of a node.
  *
- * <p>Downstream nodes receive artifact <em>references</em>, never copies, and each artifact records
- * the inputs and decisions that produced it. Walking those links backwards from any artifact
- * reaches the original requirement, which is what makes lineage a property of the data rather
- * than something reconstructed from logs after the fact.
+ * <p>Each artifact records the artifacts and decisions it came from, so lineage can be walked
+ * back to the original requirement.
  */
 public record Artifact(
         String artifactId,

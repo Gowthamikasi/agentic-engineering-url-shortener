@@ -4,10 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.List;
 
-/**
- * A versioned set of guardrails. Every run stamps the version it was evaluated against
- * (REQ-D-003), so a later policy change never silently reinterprets an old run's verdict.
- */
+/** A versioned set of guardrails. Every run records the version it was checked against. */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record PolicySet(String version, String description, List<PolicyRule> rules) {
 

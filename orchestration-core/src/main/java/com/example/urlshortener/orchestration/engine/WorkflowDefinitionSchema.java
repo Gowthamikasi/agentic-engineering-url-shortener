@@ -14,14 +14,8 @@ import java.util.TreeSet;
 /**
  * Validates a workflow definition against its published JSON schema.
  *
- * <p>A schema that nothing enforces is documentation, and documentation drifts. Running it at load
- * means the published contract and the accepted input cannot disagree: a definition the schema
- * rejects never reaches the engine.
- *
- * <p>This catches a different class of problem from {@link DagValidator}. The schema rejects a
- * definition that is malformed — an unknown field, a misspelled enum, a retry budget of zero. The
- * DAG validator rejects one that is well-formed but incoherent — a cycle, a dangling dependency.
- * Both run, in that order, because a structurally broken file produces confusing graph errors.
+ * <p>Running it at load keeps the published contract and the accepted input in step; a schema
+ * nothing checks drifts away from the code it describes.
  */
 public final class WorkflowDefinitionSchema {
 
@@ -57,7 +51,11 @@ public final class WorkflowDefinitionSchema {
         }
     }
 
-    /** @throws SchemaViolationException listing every violation, not just the first */
+    /**
+     * Reports every violation at once, because fixing them one at a time is tedious.
+     *
+     * @throws SchemaViolationException if the definition does not match the schema
+     */
     public void validate(JsonNode definition) {
         Set<ValidationMessage> messages = schema.validate(definition);
         if (messages.isEmpty()) {

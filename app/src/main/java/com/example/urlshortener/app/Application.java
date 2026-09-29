@@ -7,13 +7,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * The single process that hosts both planes.
+ * The single process hosting both planes.
  *
- * <p>Both planes live in one JVM and one database, but they share nothing above that line: no
- * module of the application plane depends on the control plane or the reverse, and an ArchUnit
- * test fails the build if that ever changes. A modular monolith is the honest shape for a
- * prototype that has to be runnable from a clean clone — the boundaries are real and enforced,
- * without inventing distributed-systems problems the assignment did not ask for.
+ * <p>They share a JVM and a database but nothing above that: neither plane's modules depend on
+ * the other's, and ArchitectureBoundaryTest fails the build if that changes.
  */
 @SpringBootApplication(scanBasePackages = {
         "com.example.urlshortener.app",

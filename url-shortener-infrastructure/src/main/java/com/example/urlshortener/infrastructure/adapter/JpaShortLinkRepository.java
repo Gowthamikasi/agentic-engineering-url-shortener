@@ -41,12 +41,12 @@ public class JpaShortLinkRepository implements ShortLinkRepository {
     /**
      * Inserts only when the code is free.
      *
-     * <p>Two details here are load-bearing. {@code persist} is used rather than
-     * {@code JpaRepository.save}: the entity has an assigned string id, so {@code save} would
-     * treat it as detached and <em>merge</em> it, quietly overwriting an existing link instead of
-     * reporting the collision. And {@code REQUIRES_NEW} keeps a losing race out of the caller's
-     * transaction, because the caller's answer to a collision is simply to mint another code —
-     * which it could not do inside a transaction the constraint violation had already poisoned.
+     * <p>Uses persist rather than JpaRepository.save: the entity has an assigned string id, so
+     * save would treat it as detached and merge it, overwriting an existing link instead of
+     * reporting the collision.
+     *
+     * <p>REQUIRES_NEW keeps a lost race out of the caller's transaction, since the caller's
+     * response to a collision is simply to try another code.
      */
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)

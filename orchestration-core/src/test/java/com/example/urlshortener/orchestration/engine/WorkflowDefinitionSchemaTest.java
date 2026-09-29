@@ -10,8 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * The published schema, tested as a gate rather than as documentation.
  *
- * <p>A schema nothing enforces drifts away from the code it claims to describe. These tests exist
- * so the schema and the loader cannot disagree: whatever the schema rejects, the engine refuses.
+ * <p>Whatever the schema rejects, the loader has to refuse, so the two cannot drift apart.
  */
 class WorkflowDefinitionSchemaTest {
 
@@ -38,9 +37,8 @@ class WorkflowDefinitionSchemaTest {
     }
 
     /**
-     * The check that earns the schema its place: a typo in a field name would otherwise be silently
-     * ignored by Jackson, and the node would run with the default the author thought they had
-     * overridden.
+     * Without the schema, Jackson would ignore a misspelled field and the node would quietly
+     * run with the default the author thought they had overridden.
      */
     @Test
     void an_unknown_field_is_rejected_rather_than_silently_ignored() {
@@ -61,7 +59,7 @@ class WorkflowDefinitionSchemaTest {
                 .isInstanceOf(WorkflowDefinitionSchema.SchemaViolationException.class);
     }
 
-    /** A zero retry budget is a definition that can never run a node; it should not load. */
+    /** A zero retry budget describes a node that can never run. */
     @Test
     void a_nonsensical_retry_budget_or_timeout_is_rejected() {
         assertThatThrownBy(() -> loader.fromJson(definitionWith("""
@@ -99,10 +97,7 @@ class WorkflowDefinitionSchemaTest {
                         e -> assertThat(e.violations()).hasSizeGreaterThanOrEqualTo(3));
     }
 
-    /**
-     * Schema and graph checks catch different things, and both must run: this definition is
-     * perfectly well-formed and still cannot execute.
-     */
+    /** Both checks are needed: this file is well-formed and still cannot execute. */
     @Test
     void a_schema_valid_definition_can_still_be_rejected_as_a_graph() {
         assertThatThrownBy(() -> loader.fromJson("""

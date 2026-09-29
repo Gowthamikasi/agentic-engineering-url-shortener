@@ -9,9 +9,8 @@ import org.springframework.stereotype.Component;
 /**
  * Sweeps gates that have been waiting too long.
  *
- * <p>The only thing this can do is safe-stop a run. It is worth being explicit about what is
- * missing here: there is no branch, flag or configuration that lets elapsed time approve
- * anything. Silence is not consent (REQ-D-010), and a negative test asserts it.
+ * <p>All it can do is safe-stop a run. There is no setting that lets elapsed time approve
+ * anything (REQ-D-010), and a test checks that.
  */
 @Component
 public class ApprovalTimeoutScheduler {

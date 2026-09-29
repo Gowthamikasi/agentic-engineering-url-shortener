@@ -14,15 +14,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
-/** The three requirement-stage agents: intake, normalisation, and the quality gate that decides whether to ask. */
+/** Intake, normalisation, and the quality check that decides whether to ask a human. */
 public final class RequirementAgents {
 
     private RequirementAgents() {
     }
 
-    // ------------------------------------------------------------------ ingest
-
-    /** Accepts the raw requirement and classifies the change it represents. */
+    /** Accepts the raw requirement and classifies the kind of change it is. */
     public static class RequirementIngestAgent implements StageAgent {
 
         private final ObjectMapper json;
@@ -64,14 +62,11 @@ public final class RequirementAgents {
         }
     }
 
-    // ------------------------------------------------------------------ normalize
-
     /**
      * Restates the requirement in testable form.
      *
-     * <p>If a clarification decision has been recorded, it is folded in here. That is what makes
-     * this node the one the clarify gate supersedes: re-running it with the human's answer is what
-     * gives every downstream node a different input to work from.
+     * <p>A recorded clarification decision gets folded in here, which is why the clarify gate
+     * supersedes this node: re-running it gives everything downstream a different input.
      */
     public static class RequirementNormalizeAgent implements StageAgent {
 
@@ -124,19 +119,15 @@ public final class RequirementAgents {
         }
     }
 
-    // ------------------------------------------------------------------ quality check
-
     /**
      * Decides whether the requirement is safe to implement as written.
      *
-     * <p>REQ-D-009 shapes this: a clear requirement must proceed <em>without</em> an artificial
-     * gate. A system that asks a question at every run teaches its reviewers to approve without
-     * reading, which is worse than not asking. So the gate is armed only when a check actually
-     * fails, and the decision either way is recorded with its reasons.
+     * <p>The gate is only armed when a check actually fails (REQ-D-009). Asking a question on
+     * every run would train reviewers to approve without reading.
      */
     public static class RequirementQualityAgent implements StageAgent {
 
-        /** Phrases that describe an intent without giving anything testable. */
+        /** Phrases that state an intent without giving anything testable. */
         private static final List<String> VAGUE_MARKERS = List.of(
                 "a while", "some time", "soon", "popular", "fast", "slow", "a few",
                 "etc", "and so on", "as needed", "appropriate", "reasonable", "user-friendly");
@@ -219,9 +210,8 @@ public final class RequirementAgents {
                     found.add("'" + marker + "' is not quantified; no value, unit or window is given.");
                 }
             }
-            // "show" is only ambiguous when the requirement never says through what, to whom, or with
-            // what observable result. "Stats must still show total clicks" names its surface and its
-            // expected value, so flagging it would be exactly the artificial gate REQ-D-009 forbids.
+            // "show" is only vague when nothing says through what, to whom, or with what result.
+            // "Stats must still show total clicks" names both, so flagging it would be a false alarm.
             boolean namesASurface = lower.matches(".*\\b(api|endpoint|response|field|stats|header|ui|page)\\b.*");
             if (lower.contains("show") && !namesASurface && !hasTestableSignals(statement)) {
                 found.add("'show' does not say through which surface, or who is allowed to see it.");
@@ -236,7 +226,7 @@ public final class RequirementAgents {
             return lower.matches(".*\\b\\d+\\s*(second|minute|hour|day|week|month|year)s?\\b.*");
         }
 
-        /** Concrete status codes, field names or numbers are what make a statement checkable. */
+        /** Status codes, field names and numbers are what make a statement checkable. */
         static boolean hasTestableSignals(String statement) {
             if (statement == null) {
                 return false;

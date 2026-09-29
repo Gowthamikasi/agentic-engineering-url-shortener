@@ -21,11 +21,10 @@ import java.net.URI;
 import java.util.stream.Collectors;
 
 /**
- * Turns domain failures into RFC 9457 {@code application/problem+json} bodies.
+ * Turns domain failures into RFC 9457 problem responses.
  *
- * <p>The status mapping carries meaning a caller can act on: 404 means the code never existed,
- * 410 means it existed and lapsed, 422 means the URL parsed but policy refused the target, and
- * 409 means an Idempotency-Key was reused with different content.
+ * <p>The status codes mean something a caller can act on: 404 never existed, 410 existed
+ * and lapsed, 422 parsed but was refused, 409 an Idempotency-Key reused with new content.
  */
 @RestControllerAdvice
 public class ProblemDetailAdvice {
@@ -88,7 +87,7 @@ public class ProblemDetailAdvice {
         return problem;
     }
 
-    /** Ties the error the caller sees to the log line the operator will read. */
+    /** Links the error the caller sees to the log line an operator will read. */
     private static void addTraceId(ProblemDetail problem) {
         String traceId = MDC.get("traceId");
         if (traceId != null) {

@@ -14,17 +14,16 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
-/** Impact analysis, decomposition, contract design and test planning. */
+/** Impact analysis, decomposition, contract design, test planning and the change set. */
 public final class DesignAgents {
 
     private DesignAgents() {
     }
 
     /**
-     * Brownfield impact analysis: what the change touches, and how it would be undone.
+     * Brownfield impact analysis: what the change touches and how it would be undone.
      *
-     * <p>This runs <em>before</em> any code is changed and its output is what the impact-approval
-     * gate shows a human. Producing it afterwards would make the gate decorative.
+     * <p>Runs before any code changes, because its output is what the approval gate shows.
      */
     public static class ImpactAnalysisAgent implements StageAgent {
 
@@ -79,9 +78,8 @@ public final class DesignAgents {
             ArrayNode data = report.putArray("impactedDataFlows");
             impact.dataFlows().forEach(data::add);
 
-            // An empty scan is reported as an empty scan. Falling back to a plausible-looking
-            // answer would turn a gap in the analysis into a confident-sounding fiction, and the
-            // approval gate exists precisely so a human can see which of the two this is.
+            // Report an empty scan as empty. A plausible-looking guess would read exactly like a
+            // real finding at the approval gate.
             if (impact.isEmpty()) {
                 report.put("finding", "No source file matched enough requirement terms to be reported "
                         + "as impacted. The change may be new work, or the requirement may not use the "
@@ -102,9 +100,8 @@ public final class DesignAgents {
                     ? "possible: matched files include schema or entity definitions"
                     : "none detected: no schema or entity file matched");
 
-            // An architecture decision changes when the requirement names something an ADR already
-            // fixed. Declaring it lets the change-control policy require the ADR, rather than
-            // trusting that somebody remembered to write one.
+            // Flagging this lets the change-control policy insist on an ADR, rather than relying
+            // on someone remembering to write one.
             boolean architectureDecisionChanged = mentionsDecidedConcern(text);
             report.put("architectureDecisionChanged", architectureDecisionChanged);
             if (architectureDecisionChanged) {
@@ -152,7 +149,7 @@ public final class DesignAgents {
         }
     }
 
-    /** Breaks the requirement into ordered tasks, flagging which ones must be driven by tests. */
+    /** Breaks the requirement into ordered tasks, flagging the ones that need tests first. */
     public static class DecomposeAgent implements StageAgent {
 
         private final ObjectMapper json;
@@ -217,11 +214,10 @@ public final class DesignAgents {
     }
 
     /**
-     * Decides the API contract impact and the version change that follows from it.
+     * Decides the API contract impact and the version change that follows.
      *
-     * <p>The version rule is mechanical on purpose: an additive optional field is a minor bump, a
-     * removal or a type change is a major bump behind a new path prefix. Leaving it to judgement is
-     * how consumers get broken by a change someone considered "small".
+     * <p>The version rule is mechanical: an additive optional field is a minor bump, a removal
+     * or a type change is a major one behind a new path prefix.
      */
     public static class ContractAgent implements StageAgent {
 
@@ -279,7 +275,7 @@ public final class DesignAgents {
         }
     }
 
-    /** Derives the acceptance tests each task must satisfy. */
+    /** Derives the acceptance tests each task has to satisfy. */
     public static class TestPlanAgent implements StageAgent {
 
         private final ObjectMapper json;
@@ -331,11 +327,9 @@ public final class DesignAgents {
     }
 
     /**
-     * Applies the change set.
+     * Records the change set the decomposition and contract call for.
      *
-     * <p>ASM-001 / EXC-004: this agent does not generate code. It records the change set that the
-     * decomposition and contract call for, as a rollbackable artifact. Claiming otherwise would be
-     * the one kind of dishonesty this whole exercise is built to avoid.
+     * <p>It does not generate code (ASM-001, EXC-004), and the artifact it produces says so.
      */
     public static class ImplementAgent implements StageAgent {
 
@@ -373,10 +367,9 @@ public final class DesignAgents {
                     .artifact("ChangeSet", changeSet.toString(), context.upstreamArtifactIds())
                     .fact("implement.changeSetRecorded", true);
 
-            // The TDD fact is only contributed when the run was given real evidence to point at.
-            // Left unset, the policy set raises an exception request that a human must decide —
-            // which is the correct answer, because this agent does not write code and therefore
-            // cannot have watched a test go red and then green.
+            // Only report TDD evidence when the run supplied some. This agent does not write code,
+            // so it cannot have watched a test go red then green; left unset, the policy set asks a
+            // human instead.
             Object tddEvidence = context.input().get("tddEvidence");
             if (tddEvidence instanceof Map<?, ?> evidence) {
                 boolean redThenGreen = Boolean.parseBoolean(String.valueOf(evidence.get("redThenGreen")));
@@ -387,7 +380,7 @@ public final class DesignAgents {
         }
     }
 
-    /** Never dispatched: gate nodes are held by the engine and settled by a human decision. */
+    /** Never dispatched. Gate nodes are held by the engine and settled by a human decision. */
     public static class HumanGateAgent implements StageAgent {
 
         @Override

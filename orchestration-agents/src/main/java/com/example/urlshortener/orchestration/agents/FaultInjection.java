@@ -9,20 +9,18 @@ import java.util.Optional;
 /**
  * Deterministic fault injection, declared in a run's input.
  *
- * <p>The reliability behaviour of this system — retry, rollback, compensation, MTTR — can only be
- * demonstrated if failures actually happen. Waiting for a real one would produce no evidence, and
- * writing the numbers by hand would produce false evidence. So failures are injected explicitly,
- * from the run input, and every injected failure carries "(fault-injected)" in its reason so it is
- * visible as such in the audit trail and in the metrics population.
+ * <p>Retry, rollback and MTTR can only be demonstrated if something actually fails, so
+ * failures are injected on purpose. Every one carries "(fault-injected)" in its reason so
+ * it is obvious in the audit trail.
  *
  * <p>Input shape:
  * <pre>
- * "faults": { "contract-tests": { "times": 1, "class": "TRANSIENT", "reason": "H2 lock timeout" } }
+ * "faults": { "contract-tests": { "times": 1, "class": "TRANSIENT", "reason": "lock timeout" } }
  * </pre>
  */
 public final class FaultInjection {
 
-    /** A fault an agent should raise for the current attempt. */
+    /** A fault an agent should raise on the current attempt. */
     public record Fault(FailureClass failureClass, String reason) {
     }
 
@@ -31,7 +29,7 @@ public final class FaultInjection {
     private FaultInjection() {
     }
 
-    /** @return the fault to raise on this attempt, or empty when the attempt should proceed normally */
+    /** @return the fault for this attempt, or empty if the attempt should run normally */
     @SuppressWarnings("unchecked")
     public static Optional<Fault> forAttempt(StageContext context) {
         Object faults = context.input().get("faults");

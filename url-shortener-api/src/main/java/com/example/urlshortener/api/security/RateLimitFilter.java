@@ -23,12 +23,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Token-bucket rate limiting (ASM-007): creates are limited per API key, redirects per client
- * address. The two are separate buckets because they defend against different things — key abuse
- * versus a flood of anonymous redirect traffic.
+ * Token-bucket rate limiting: creates per API key, redirects per client address.
  *
- * <p>Buckets live in a process-local map, which is correct for a single-node prototype and is the
- * documented limit: a horizontally scaled deployment would need a shared store.
+ * <p>Separate buckets because they guard different things. The buckets are process-local,
+ * which is fine for a single node and would need a shared store otherwise.
  */
 public class RateLimitFilter extends OncePerRequestFilter {
 
@@ -81,7 +79,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return null;
     }
 
-    /** A redirect is a single non-API path segment, e.g. {@code /k3Xz9Qa}. */
+    /** A redirect is a single non-API path segment, like /k3Xz9Qa. */
     private static boolean isRedirectPath(String path) {
         if (path == null || path.length() < 2 || path.indexOf('/', 1) >= 0) {
             return false;

@@ -68,7 +68,7 @@ public class LinksController {
                 keyIdOf(httpRequest)));
 
         LinkResponse body = LinkResponse.of(outcome.link(), properties.getBaseUrl());
-        // A replayed idempotent request is not a new creation, so it answers 200 rather than 201.
+        // A replay is not a new creation, so it answers 200 rather than 201.
         HttpStatus status = outcome.replayed() ? HttpStatus.OK : HttpStatus.CREATED;
         return ResponseEntity.status(status)
                 .header(ApiContract.HEADER, API_VERSION)

@@ -3,10 +3,9 @@ package com.example.urlshortener.orchestration.model;
 /**
  * What can be undone after a node fails.
  *
- * <p>{@code ROLLBACKABLE} means the node's output can be reverted to its prior version — a patch
- * un-applied, a report regenerated. {@code COMPENSATABLE} means something was already observed
- * outside the engine and cannot be taken back, so the only honest response is a recorded
- * compensating action. {@code NONE} means neither applies and a human must decide.
+ * <p>ROLLBACKABLE: the output can be reverted or regenerated. COMPENSATABLE: something was
+ * already observed outside the engine, so the best we can do is record a compensating action.
+ * NONE: neither applies and a human has to decide.
  */
 public enum RecoveryMode {
     ROLLBACKABLE,

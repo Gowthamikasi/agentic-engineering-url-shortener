@@ -6,14 +6,14 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * A shortened link. Pure domain type: no Spring, no JPA, no framework annotations.
+ * A shortened link. Plain domain type: no Spring, no JPA.
  *
- * @param code            the short code (application-plane primary key)
- * @param target          canonicalised absolute target URL
- * @param createdAt       creation instant (UTC)
- * @param expiresAt       optional absolute expiry (UTC); {@code null} means "never expires" (ASM-004)
- * @param idempotencyKey  optional client-supplied Idempotency-Key that minted this link (ASM-002)
- * @param createdByKeyId  identifier of the API key that created the link (never the key itself)
+ * @param code           the short code
+ * @param target         canonicalised absolute target URL
+ * @param createdAt      creation instant (UTC)
+ * @param expiresAt      optional absolute expiry (UTC); null means it never expires
+ * @param idempotencyKey the Idempotency-Key that minted it, if any
+ * @param createdByKeyId which API key created it (the id, never the key)
  */
 public record ShortLink(
         String code,

@@ -1,8 +1,10 @@
 package com.example.urlshortener.telemetry.audit;
 
 /**
- * The closed vocabulary of audited actions. Keeping these as constants (rather than free text)
- * is what lets the reliability calculator derive MTTR from the journal instead of hand-entry.
+ * The closed set of audited actions.
+ *
+ * <p>Constants rather than free text, so the reliability calculator can work out MTTR from the
+ * journal instead of someone typing a number in.
  */
 public final class AuditActions {
 
@@ -28,7 +30,7 @@ public final class AuditActions {
 
     public static final String APPROVAL_REQUESTED = "ApprovalRequested";
     public static final String APPROVAL_DECIDED = "ApprovalDecided";
-    /** The node state change that follows a decision, kept distinct so the trail has one row per fact. */
+    /** The node state change that follows a decision, kept separate so each row means one thing. */
     public static final String APPROVAL_APPLIED = "ApprovalApplied";
 
     public static final String FALLBACK_APPLIED = "FallbackApplied";

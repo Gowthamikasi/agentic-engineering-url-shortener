@@ -30,7 +30,7 @@ public final class WorkflowDto {
             Map<String, Object> tddEvidence) {
     }
 
-    /** A human decision at a gate. Both actor and rationale are required, by design. */
+    /** A human decision at a gate. Actor and rationale are both required. */
     public record DecisionRequest(
             @NotBlank(message = "decision is required") String decision,
             @NotBlank(message = "actor is required") String actor,
@@ -90,7 +90,7 @@ public final class WorkflowDto {
                                Object content) {
     }
 
-    /** One step of a lineage walk, from an artifact back towards the original requirement. */
+    /** One step of a lineage walk, back towards the original requirement. */
     public record LineageStep(String artifactId, String nodeId, String type, int version, String sha256,
                               List<String> inputArtifactIds, List<String> decisionIds, Instant producedAt) {
 

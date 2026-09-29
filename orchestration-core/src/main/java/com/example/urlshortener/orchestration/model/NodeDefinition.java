@@ -5,34 +5,29 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 
 /**
- * One node of a workflow definition, as loaded from versioned JSON.
+ * One node of a workflow definition, loaded from versioned JSON.
  *
- * <p>Retry, timeout and recovery are declared here rather than implemented inside agents. That
- * split is deliberate: if an agent could retry internally, the engine's retry budget would be a
- * lie and the journal would not show what actually happened.
+ * <p>Retry, timeout and recovery are declared here rather than inside agents, so the engine stays
+ * the only thing that retries and the journal's attempt count stays accurate.
  *
- * @param id              stable node id, unique within the definition
- * @param agentType       which registered agent executes this node
- * @param dependsOn       upstream node ids
+ * @param id              node id, unique within the definition
+ * @param agentType       which registered agent runs this node
+ * @param dependsOn       upstream node ids; part of the entry gate
  * @param joinType        whether all or any dependency must be satisfied
  * @param requiresApproval whether this node is a human gate
- * @param gateId          the gate identifier callers post decisions to
+ * @param gateId          the id callers post decisions to
  * @param timeoutMs       per-attempt timeout
- * @param maxAttempts     total attempts, including the first (1 means no retry)
+ * @param maxAttempts     total attempts including the first (1 means no retry)
  * @param backoffBaseMs   base for exponential backoff between attempts
  * @param recoveryMode    what can be undone if this node fails
- * @param criticality     whether failure blocks the downstream subgraph
- * @param branchCondition SpEL over the run context; a false condition skips the node
- * @param fallbackAllowed whether a permanent failure may be absorbed as a degraded success
- * @param destructive     whether the node performs an irreversible action and needs its own gate
- * @param supersedes      for a gate: the upstream node whose artifact this gate's decision replaces.
- *                        Setting it is what turns an approval into a replanning trigger, so the
- *                        definition states which decisions can reshape the graph instead of the
- *                        engine inferring it.
- * @param producesArtifacts the node's <strong>exit gate</strong>: artifact types that must exist
- *                        before the node may be called successful. An agent that returns success
- *                        without producing what the definition says it produces is a failure, not
- *                        a success, and this is what makes the difference detectable.
+ * @param criticality     whether failure blocks everything downstream
+ * @param branchCondition SpEL over the run context; false skips the node
+ * @param fallbackAllowed whether a permanent failure can be absorbed as a degraded success
+ * @param destructive     whether the node does something irreversible
+ * @param supersedes      for a gate: the upstream node whose artifact this decision replaces,
+ *                        which is what turns the approval into a replanning trigger
+ * @param producesArtifacts the exit gate: artifact types that must exist before the node counts
+ *                        as successful
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record NodeDefinition(

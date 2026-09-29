@@ -47,10 +47,10 @@ public class UrlShortenerProperties {
 
     public static class ShortCode {
 
-        /** Alphabet used to mint <em>new</em> codes. Lookup always accepts every known alphabet. */
+        /** Alphabet for new codes. Lookup always accepts every known alphabet. */
         private String alphabet = "BASE62";
         private int length = 7;
-        /** Bounded collision retry (ASM-003); exceeding it is a permanent failure, not an endless loop. */
+        /** How many collisions to tolerate before giving up, rather than looping forever. */
         private int collisionRetries = 3;
 
         public String getAlphabet() {
@@ -80,10 +80,8 @@ public class UrlShortenerProperties {
 
     public static class Validation {
 
-        /**
-         * Whether target hosts are resolved and checked against the private-address denylist.
-         * Only ever disabled in tests, which must not depend on DNS.
-         */
+        /** Resolve target hosts and check them against the private-address denylist.
+         *  Only switched off in tests, which must not depend on DNS. */
         private boolean enforceAddressChecks = true;
 
         public boolean isEnforceAddressChecks() {
@@ -128,7 +126,7 @@ public class UrlShortenerProperties {
         }
     }
 
-    /** One configured API key. Only the SHA-256 hash is ever held, never the key itself. */
+    /** One configured API key. Only the hash is held, never the key. */
     public static class ApiKey {
 
         private String id;

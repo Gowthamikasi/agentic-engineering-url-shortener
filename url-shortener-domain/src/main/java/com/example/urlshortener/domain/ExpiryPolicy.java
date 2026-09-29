@@ -5,16 +5,17 @@ import com.example.urlshortener.domain.model.ShortLink;
 import java.time.Instant;
 
 /**
- * ASM-004: expiry is an optional absolute UTC instant, there is no default expiry, and an
- * expired link resolves to {@code Gone} rather than {@code NotFound} so callers can tell the
- * difference between "never existed" and "existed and lapsed".
+ * Expiry is an optional absolute UTC instant and there is no default (ASM-004).
+ *
+ * <p>An expired link is Gone rather than NotFound, so a caller can tell "never existed" from
+ * "existed and lapsed".
  */
 public final class ExpiryPolicy {
 
     private ExpiryPolicy() {
     }
 
-    /** Result of resolving a link against the clock. */
+    /** Whether a link is still live at a given moment. */
     public enum Resolution {
         ACTIVE,
         GONE
@@ -24,7 +25,7 @@ public final class ExpiryPolicy {
         return link.isExpired(now) ? Resolution.GONE : Resolution.ACTIVE;
     }
 
-    /** A requested expiry must be strictly in the future; anything else is a client error. */
+    /** An expiry has to be in the future to be accepted. */
     public static boolean isAcceptableExpiry(Instant expiresAt, Instant now) {
         return expiresAt == null || expiresAt.isAfter(now);
     }

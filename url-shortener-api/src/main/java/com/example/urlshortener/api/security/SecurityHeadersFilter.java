@@ -9,11 +9,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 /**
- * Sets the response headers that matter for a redirector.
+ * Response headers that matter for a redirector.
  *
- * <p>{@code Referrer-Policy: no-referrer} is the one specific to this domain: without it, following
- * a short link leaks the short URL — and therefore the fact that this user followed it — to the
- * target site.
+ * <p>Referrer-Policy is the interesting one: without it, following a short link tells the
+ * target site which short URL sent you.
  */
 public class SecurityHeadersFilter extends OncePerRequestFilter {
 

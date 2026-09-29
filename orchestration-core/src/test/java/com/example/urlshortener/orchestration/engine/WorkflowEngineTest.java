@@ -27,8 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Behavioural tests for the engine: what actually happens when nodes run in parallel, fail,
- * time out, get rejected, or have their inputs changed underneath them.
+ * What the engine actually does when nodes run in parallel, fail, time out, get rejected, or
+ * have their inputs changed underneath them.
  */
 class WorkflowEngineTest {
 
@@ -62,8 +62,6 @@ class WorkflowEngineTest {
         return engine;
     }
 
-    // ---------------------------------------------------------------- definitions
-
     private static NodeDefinition node(String id, String agentType, List<String> dependsOn) {
         return new NodeDefinition(id, agentType, dependsOn, JoinType.ALL, false, null,
                 5_000, 1, 50, RecoveryMode.NONE, Criticality.BLOCKING, null, false, false, null, List.of(), id);
@@ -81,8 +79,6 @@ class WorkflowEngineTest {
     private static Map<String, Object> input() {
         return Map.of("text", "a requirement", "actor", "madhu", "kind", "Greenfield");
     }
-
-    // ---------------------------------------------------------------- happy path
 
     @Test
     void a_linear_run_completes_and_journals_every_node() {
@@ -116,8 +112,6 @@ class WorkflowEngineTest {
         assertThat(events).allSatisfy(e -> assertThat(e.policyVersion()).isEqualTo("1.0.0"));
     }
 
-    // ---------------------------------------------------------------- parallelism and join
-
     @Test
     void sibling_nodes_run_concurrently_and_their_execution_windows_overlap() {
         TestAgents.OverlapProbeAgent probe = new TestAgents.OverlapProbeAgent("SlowWork", 300);
@@ -133,7 +127,7 @@ class WorkflowEngineTest {
         TestAgents.OverlapProbeAgent.Window left = probe.windowFor("left");
         TestAgents.OverlapProbeAgent.Window right = probe.windowFor("right");
 
-        // Real overlap: each started before the other finished.
+        // Genuine overlap: each started before the other finished.
         assertThat(left.start()).isBefore(right.end());
         assertThat(right.start()).isBefore(left.end());
         assertThat(instance.state()).isEqualTo(InstanceState.COMPLETED);
@@ -183,8 +177,6 @@ class WorkflowEngineTest {
         assertThat(instance.node("join").state()).isEqualTo(NodeState.SUCCEEDED);
     }
 
-    // ---------------------------------------------------------------- branching
-
     @Test
     void a_node_whose_branch_condition_is_false_is_skipped_with_a_stated_reason() {
         NodeDefinition conditional = new NodeDefinition("brownfield-only", "TestAgent", List.of("root"),
@@ -219,8 +211,6 @@ class WorkflowEngineTest {
 
         assertThat(instance.node("brownfield-only").state()).isEqualTo(NodeState.SUCCEEDED);
     }
-
-    // ---------------------------------------------------------------- retry, timeout, recovery
 
     @Test
     void a_transient_failure_is_retried_within_the_budget_and_then_succeeds() {
@@ -330,8 +320,6 @@ class WorkflowEngineTest {
         assertThat(instance.node("downstream").state()).isEqualTo(NodeState.BLOCKED);
         assertThat(instance.node("downstream").reason()).contains("blocking dependency");
     }
-
-    // ---------------------------------------------------------------- human gates
 
     @Test
     void a_run_parks_at_a_gate_and_does_not_advance_on_its_own() throws Exception {
@@ -459,8 +447,6 @@ class WorkflowEngineTest {
         assertThat(instance.node("release-gate").state()).isEqualTo(NodeState.AWAITING_APPROVAL);
     }
 
-    // ---------------------------------------------------------------- replanning
-
     @Test
     void a_decision_that_supersedes_an_upstream_node_invalidates_its_downstream_closure() {
         TestAgents.RecordingAgent agent = new TestAgents.RecordingAgent("TestAgent");
@@ -530,8 +516,6 @@ class WorkflowEngineTest {
                 .as("the summary must trace back through the gate to what 'produce' made")
                 .containsExactlyElementsOf(instance.node("produce").artifactIds());
     }
-
-    // ---------------------------------------------------------------- exit gates
 
     /** A node that declares output and produces it passes its exit gate. */
     @Test
@@ -624,8 +608,6 @@ class WorkflowEngineTest {
             return StageResult.success("claimed success, produced nothing").build();
         }
     }
-
-    // ---------------------------------------------------------------- misc
 
     @Test
     void a_node_whose_agent_is_not_registered_fails_permanently_rather_than_hanging() {

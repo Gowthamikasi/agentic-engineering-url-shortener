@@ -23,20 +23,20 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Creates short links: validate, honour idempotency, then mint a code with bounded collision retry.
+ * Creates short links: validate, check idempotency, then mint a code.
  *
- * <p>The ordering is deliberate. Validation runs before the idempotency lookup so a bad URL is
- * rejected the same way whether or not a key was supplied, and the idempotency check runs before
- * minting so a retried request never burns a second code.
+ * <p>The order matters. Validating first means a bad URL is rejected the same way with or
+ * without an Idempotency-Key, and checking idempotency before minting means a retried
+ * request does not burn a second code.
  */
 @Service
 public class CreateLinkService {
 
-    /** What a caller asked for. */
+    /** What the caller asked for. */
     public record Command(String url, Instant expiresAt, String rawExpiresAt, String idempotencyKey, String keyId) {
     }
 
-    /** What happened, so the controller can answer 201 for a new link and 200 for a replay. */
+    /** Whether this was a new link or a replay, so the controller can pick 201 or 200. */
     public record Outcome(ShortLink link, boolean replayed) {
     }
 
@@ -94,7 +94,7 @@ public class CreateLinkService {
         return new Outcome(stored, false);
     }
 
-    /** ASM-002: same key and same body replays the original; same key and a different body is a conflict. */
+    /** Same key and body replays the original; same key with a different body is a conflict. */
     private Optional<Outcome> replayIfSeen(String idempotencyKey, String requestHash) {
         Optional<IdempotencyRecord> seen = idempotency.find(idempotencyKey);
         if (seen.isEmpty()) {
@@ -108,9 +108,10 @@ public class CreateLinkService {
     }
 
     /**
-     * Mints a free code. The retry bound matters: with a 62^7 space a collision is already
-     * improbable, so repeated collisions mean something is wrong (an exhausted space, a broken
-     * random source) and looping would turn that into a hang instead of an error.
+     * Mints a free code, giving up after a bounded number of collisions.
+     *
+     * <p>With a 62^7 space a collision is already unlikely, so repeated ones mean something is
+     * wrong. Looping forever would turn that into a hang instead of an error.
      */
     private ShortLink mint(Command command, UrlValidationResult validation, Instant now) {
         for (int attempt = 1; attempt <= collisionRetries; attempt++) {

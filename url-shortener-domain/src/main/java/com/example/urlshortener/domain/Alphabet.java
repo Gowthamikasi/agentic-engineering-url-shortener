@@ -1,10 +1,10 @@
 package com.example.urlshortener.domain;
 
 /**
- * Short-code alphabet strategy (ADR-004, superseded by ADR-017 in the brownfield scenario).
+ * Short-code alphabets (ADR-004, extended by ADR-017).
  *
- * <p>BASE62 is the original alphabet. BASE58 drops the visually ambiguous glyphs {@code 0 O I l}.
- * The generator mints with one alphabet; the validator accepts both so legacy codes keep resolving.
+ * <p>BASE58 drops the glyphs that look alike: 0, O, I and l. New codes are minted from one
+ * alphabet; lookup accepts both, so codes made before a switch still resolve.
  */
 public enum Alphabet {
 

@@ -5,7 +5,7 @@ import com.example.urlshortener.orchestration.model.Decision;
 import java.util.List;
 import java.util.Optional;
 
-/** Persisted human decisions. A gate's state change is only valid if a row exists here first. */
+/** Persisted human decisions. A gate only changes state once a row exists here. */
 public interface ApprovalStore {
 
     void save(String runId, Decision decision);

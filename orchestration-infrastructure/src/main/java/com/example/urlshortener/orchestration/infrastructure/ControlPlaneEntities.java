@@ -10,14 +10,13 @@ import jakarta.persistence.Table;
 
 import java.time.Instant;
 
-/** JPA mappings for the control plane. Kept together because they are one schema, not one per file. */
+/** JPA mappings for the control plane. One schema, so one file. */
 public final class ControlPlaneEntities {
 
     private ControlPlaneEntities() {
     }
 
-    // The entity name is stated explicitly: for a nested class Hibernate would otherwise derive
-    // a name containing the enclosing class, which JPQL queries cannot refer to.
+    // Named explicitly: a nested class would otherwise get a name JPQL cannot refer to.
     @Entity(name = "InstanceEntity")
     @Table(name = "workflow_instances")
     public static class InstanceEntity {
@@ -105,8 +104,7 @@ public final class ControlPlaneEntities {
         }
     }
 
-    // The entity name is stated explicitly: for a nested class Hibernate would otherwise derive
-    // a name containing the enclosing class, which JPQL queries cannot refer to.
+    // Named explicitly: a nested class would otherwise get a name JPQL cannot refer to.
     @Entity(name = "JournalEntity")
     @Table(name = "workflow_journal")
     public static class JournalEntity {
@@ -237,8 +235,7 @@ public final class ControlPlaneEntities {
         }
     }
 
-    // The entity name is stated explicitly: for a nested class Hibernate would otherwise derive
-    // a name containing the enclosing class, which JPQL queries cannot refer to.
+    // Named explicitly: a nested class would otherwise get a name JPQL cannot refer to.
     @Entity(name = "ApprovalEntity")
     @Table(name = "approval_decisions")
     public static class ApprovalEntity {
@@ -333,8 +330,7 @@ public final class ControlPlaneEntities {
         }
     }
 
-    // The entity name is stated explicitly: for a nested class Hibernate would otherwise derive
-    // a name containing the enclosing class, which JPQL queries cannot refer to.
+    // Named explicitly: a nested class would otherwise get a name JPQL cannot refer to.
     @Entity(name = "AuditEntity")
     @Table(name = "audit_events")
     public static class AuditEntity {
@@ -464,8 +460,7 @@ public final class ControlPlaneEntities {
         }
     }
 
-    // The entity name is stated explicitly: for a nested class Hibernate would otherwise derive
-    // a name containing the enclosing class, which JPQL queries cannot refer to.
+    // Named explicitly: a nested class would otherwise get a name JPQL cannot refer to.
     @Entity(name = "PolicyExceptionEntity")
     @Table(name = "policy_exceptions")
     public static class PolicyExceptionEntity {
@@ -560,7 +555,7 @@ public final class ControlPlaneEntities {
         }
     }
 
-    /** Long reasons are trimmed rather than allowed to fail the insert that records why something happened. */
+    /** Trim a long reason rather than failing the insert that records why something happened. */
     static String truncate(String value, int max) {
         if (value == null || value.length() <= max) {
             return value;

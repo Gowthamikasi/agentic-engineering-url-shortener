@@ -5,11 +5,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 /**
- * Declares where this module's entities and repositories live.
+ * Tells Spring where this module's entities and repositories live.
  *
- * <p>Without this, Spring Boot would only scan the package of the application class, which sits in
- * a different module. Declaring it here keeps the knowledge inside the module that owns it: the
- * host application does not have to know how this adapter is laid out.
+ * <p>Without it Boot would only scan the application class's package, which is in another
+ * module.
  */
 @Configuration
 @EnableJpaRepositories(basePackages = "com.example.urlshortener.infrastructure.jpa")

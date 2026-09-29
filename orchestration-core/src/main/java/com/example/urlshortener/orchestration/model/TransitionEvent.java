@@ -3,14 +3,13 @@ package com.example.urlshortener.orchestration.model;
 import java.time.Instant;
 
 /**
- * One journal row: the atom the whole control plane is reconstructed from.
+ * One journal row. The whole control plane is rebuilt from these.
  *
- * <p>{@code (runId, seq)} is unique, which is what stops a restarted scheduler from appending a
- * second copy of an event it already wrote.
+ * <p>(runId, seq) is unique, which stops a restarted scheduler writing an event twice.
  *
- * @param action     one of {@code AuditActions}; the closed vocabulary the metrics calculator reads
- * @param actorType  HUMAN, AGENT, ENGINE or SYSTEM
- * @param payloadJson optional structured detail, e.g. an approval body or a failure report
+ * @param action      one of AuditActions; the metrics calculator reads this vocabulary
+ * @param actorType   HUMAN, AGENT, ENGINE or SYSTEM
+ * @param payloadJson optional detail, such as an approval body or a failure report
  */
 public record TransitionEvent(
         String runId,

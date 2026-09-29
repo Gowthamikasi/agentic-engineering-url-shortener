@@ -16,25 +16,22 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
- * Finds the parts of the repository a requirement actually touches.
+ * Finds the parts of the repository a requirement touches.
  *
- * <p>This is what makes the brownfield stage reasoning rather than assertion. A canned answer
- * ("this change affects the generator and the validator") is indistinguishable from a guess and
- * goes stale the moment someone moves a class. Reading the source instead means the impact report
- * names files that exist right now, and a reviewer can open every one of them.
+ * <p>How it works: pull the significant words out of the requirement, score every main
+ * source file by how many distinct ones it mentions, then pull in files that reference the
+ * types those files declare.
  *
- * <p>The method is deliberately simple and explainable: derive significant terms from the
- * requirement, score each source file by how many <em>distinct</em> terms it mentions, and report
- * the files that clear a threshold. It is a search, not a semantic understanding of the code, and
- * the report says so.
+ * <p>It is a search that follows references, not an understanding of the code, and the
+ * report it feeds says so.
  */
 public final class CodebaseScanner {
 
     /**
      * One file the requirement appears to touch.
      *
-     * @param via how it was found — {@code terms} for a direct vocabulary match, or
-     *            {@code references:Type} for a file pulled in because it uses one of those.
+     * @param via how it was found: {@code terms} for a direct word match, or
+     *            {@code references:Type} for a file pulled in because it uses one
      */
     public record Match(String module, String path, String type, int score, List<String> matchedTerms,
                         String via) {
@@ -44,7 +41,7 @@ public final class CodebaseScanner {
         }
     }
 
-    /** What a scan found, already grouped the way an impact report needs it. */
+    /** What a scan found, grouped the way an impact report needs it. */
     public record Impact(List<Match> matches, List<String> modules, List<String> apiSurface,
                          List<String> dataFlows, List<String> terms, int filesScanned) {
 
@@ -53,10 +50,7 @@ public final class CodebaseScanner {
         }
     }
 
-    /**
-     * Words that appear in almost any requirement sentence. Without this list the scan matches
-     * every file in the repository and reports nothing useful.
-     */
+    /** Filler words. Without this list nearly every file matches and the scan is useless. */
     private static final Set<String> STOPWORDS = Set.of(
             "must", "should", "shall", "will", "would", "could", "have", "has", "been", "being",
             "that", "this", "these", "those", "with", "without", "from", "into", "when", "then",
@@ -88,19 +82,18 @@ public final class CodebaseScanner {
 
         List<Path> sources = sourceFiles();
 
-        // Read once. The second pass needs the same content, and re-reading the tree would double
-        // the cost of a scan for no benefit.
+        // Read once; the second pass needs the same content.
         Map<String, String> contentByPath = new LinkedHashMap<>();
         for (Path file : sources) {
             try {
                 contentByPath.put(relativePath(file),
                         Files.readString(file, StandardCharsets.UTF_8).toLowerCase(Locale.ROOT));
             } catch (IOException | RuntimeException e) {
-                // An unreadable file is skipped rather than failing the whole analysis.
+                // Skip a file we cannot read rather than failing the whole scan.
             }
         }
 
-        // Pass 1 — files that speak the requirement's vocabulary.
+        // Pass 1: files that use the requirement's words.
         List<Match> matches = new ArrayList<>();
         Set<String> claimed = new LinkedHashSet<>();
         for (Map.Entry<String, String> entry : contentByPath.entrySet()) {
@@ -115,11 +108,8 @@ public final class CodebaseScanner {
             }
         }
 
-        // Pass 2 — files that use the types the first pass found. A class can be squarely in scope
-        // while mentioning only one of the requirement's words: ShortCodeGenerator is impacted by an
-        // alphabet change because it *uses* Alphabet, not because of how it is worded. Following the
-        // reference is what a human reviewer would do, so the scan does it too, and labels the
-        // difference rather than presenting both as the same kind of finding.
+        // Pass 2: files that use the types pass 1 found. ShortCodeGenerator is in scope for an
+        // alphabet change because it uses Alphabet, not because of how the requirement is worded.
         for (String directPath : List.copyOf(claimed)) {
             String typeName = javaTypeName(directPath);
             if (typeName == null) {
@@ -138,8 +128,7 @@ public final class CodebaseScanner {
             }
         }
 
-        // Direct matches first, then the strongest: a reviewer should read the vocabulary hits
-        // before the files that were pulled in by reference.
+        // Direct word matches first, strongest first within each group.
         matches.sort(Comparator.comparing(Match::isDirect).reversed()
                 .thenComparing(Comparator.comparingInt(Match::score).reversed())
                 .thenComparing(Match::path));
@@ -152,7 +141,7 @@ public final class CodebaseScanner {
                 terms, sources.size());
     }
 
-    /** Lower-cased, de-duplicated, stopword-filtered tokens from the requirement. */
+    /** Lower-cased, de-duplicated tokens from the requirement, minus the filler words. */
     static List<String> significantTerms(String text) {
         if (text == null || text.isBlank()) {
             return List.of();
@@ -180,7 +169,7 @@ public final class CodebaseScanner {
         }
     }
 
-    /** Main sources only: matching the tests would report the tests as the impact. */
+    /** Main sources only. Matching the tests would just report the tests as impacted. */
     private static boolean isSource(Path path) {
         String p = path.toString().replace('\\', '/');
         if (p.contains("/target/") || p.contains("/.git/") || p.contains("/src/test/")) {
@@ -197,7 +186,7 @@ public final class CodebaseScanner {
         }
     }
 
-    /** The Java type a file declares, taken from its name; null for anything that is not Java. */
+    /** The type a Java file declares, taken from its name. Null for anything else. */
     static String javaTypeName(String relativePath) {
         if (!relativePath.endsWith(".java")) {
             return null;
@@ -205,7 +194,7 @@ public final class CodebaseScanner {
         int slash = relativePath.lastIndexOf('/');
         String fileName = slash < 0 ? relativePath : relativePath.substring(slash + 1);
         String typeName = fileName.substring(0, fileName.length() - ".java".length());
-        // Very short names would match half the repository as substrings.
+        // A short name would match half the repository as a substring.
         return typeName.length() < 4 ? null : typeName;
     }
 
@@ -214,7 +203,7 @@ public final class CodebaseScanner {
         return slash < 0 ? "(root)" : relativePath.substring(0, slash);
     }
 
-    /** Coarse classification, enough to separate an API change from a data change. */
+    /** Coarse bucket, enough to tell an API change from a data change. */
     private static String classify(String relativePath, String lowerContent) {
         if (relativePath.endsWith(".sql") || relativePath.contains("/entity/")) {
             return "data";

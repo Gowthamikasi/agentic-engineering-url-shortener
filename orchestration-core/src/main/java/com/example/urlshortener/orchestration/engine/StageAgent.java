@@ -3,13 +3,11 @@ package com.example.urlshortener.orchestration.engine;
 /**
  * A stage executor.
  *
- * <p>ASM-001: agents here are deterministic rather than LLM-backed, so every test is repeatable
- * and every piece of evidence in this repository is reproducible. The interface is the seam an
- * LLM-backed implementation would sit behind; that substitution is explicitly out of scope and
- * labelled as such rather than half-built.
+ * <p>Agents here are deterministic rather than LLM-backed (ASM-001), so tests repeat and the
+ * evidence in this repository is reproducible. This interface is where an LLM adapter would go.
  *
- * <p>Implementations must be idempotent for the same {@code (nodeId, inputs)} and must not retry
- * internally — the scheduler is the only retry authority.
+ * <p>Implementations must be idempotent for the same inputs and must not retry internally; the
+ * scheduler owns retry.
  */
 public interface StageAgent {
 

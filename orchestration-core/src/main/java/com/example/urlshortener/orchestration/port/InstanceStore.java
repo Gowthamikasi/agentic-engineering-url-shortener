@@ -4,10 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Durable header for each run, so a restarted process can find runs to rebuild without scanning
- * the whole journal first.
- */
+/** Durable header per run, so a restarted process can list runs without reading the journal. */
 public interface InstanceStore {
 
     /** Header row; the full state lives in the journal. */

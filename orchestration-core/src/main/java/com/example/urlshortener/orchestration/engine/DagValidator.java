@@ -13,11 +13,10 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Validates a workflow definition before any node runs.
+ * Checks a workflow definition is a valid DAG before anything runs.
  *
- * <p>A cycle is rejected at load time rather than discovered at runtime, because a cycle discovered
- * at runtime looks exactly like a stalled run — the ready set silently stays empty and nothing
- * explains why.
+ * <p>A cycle found at runtime looks exactly like a stalled scheduler: the ready set just stays
+ * empty. Catching it at load gives a real error message instead.
  */
 public final class DagValidator {
 

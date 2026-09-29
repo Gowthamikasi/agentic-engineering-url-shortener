@@ -26,11 +26,10 @@ import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * End-to-end through a real HTTP stack on a real port.
+ * The application plane over real HTTP on a real port.
  *
- * <p>These exist because {@code MockMvc} stops short of the container: it does not exercise the
- * filter chain the way Tomcat does, does not produce real redirect responses, and cannot show that
- * the analytics queue eventually lands rows in the database. Everything here goes over a socket.
+ * <p>MockMvc stops short of the container: no real redirect responses, no real filter chain,
+ * and no way to show the click queue actually lands rows. These go over a socket.
  */
 @Tag("e2e")
 @SpringBootTest(classes = Application.class,
@@ -74,9 +73,8 @@ class ApplicationPlaneE2ETest {
     /**
      * A client that neither follows redirects nor throws on an error status.
      *
-     * <p>Both defaults would hide what these tests are here to check: a followed redirect turns the
-     * 302 into whatever example.org answers, and a throwing error handler turns an expected 410
-     * into a test failure.
+     * <p>Following the redirect would turn the 302 into whatever example.org answers, and the
+     * default error handler would turn an expected 410 into a failure.
      */
     private ResponseEntity<String> follow(String code) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory() {
@@ -109,9 +107,8 @@ class ApplicationPlaneE2ETest {
         assertThat(redirect.getHeaders().getLocation()).hasToString("https://example.org/e2e/basic");
         assertThat(redirect.getHeaders().getFirst("Referrer-Policy")).isEqualTo("no-referrer");
 
-        // Clicks are written off the redirect path, so the count arrives shortly after the redirect
-        // rather than during it. Polling here is the assertion that eventual consistency is real
-        // and bounded, not an attempt to paper over a race.
+        // Clicks are written off the redirect path, so the count lands shortly after. Polling is
+        // the point here: it checks the lag is real and bounded.
         JsonNode stats = awaitClicks(code, 1);
         assertThat(stats.get("totalClicks").asLong()).isEqualTo(1);
         assertThat(stats.get("consistency").asText()).isEqualTo("eventual (<=1s)");
@@ -149,7 +146,7 @@ class ApplicationPlaneE2ETest {
         ResponseEntity<String> afterExpiry = follow(code);
         assertThat(afterExpiry.getStatusCode()).isEqualTo(HttpStatus.GONE);
 
-        // The distinction that matters: gone, not forgotten.
+        // Gone, but not forgotten.
         JsonNode stats = rest.exchange(url("/api/v1/links/" + code + "/stats"), HttpMethod.GET,
                 request(null, REVIEWER), JsonNode.class).getBody();
         assertThat(stats).isNotNull();
@@ -179,7 +176,7 @@ class ApplicationPlaneE2ETest {
                 request("{\"url\":\"https://example.org/x\"}", REVIEWER), String.class);
         assertThat(readOnlyKey.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
-        // The redirect endpoint is the one route that must stay open to anonymous traffic.
+        // The redirect has to stay open to anonymous traffic.
         String code = createLink("https://example.org/e2e/public", null).get("code").asText();
         assertThat(follow(code).getStatusCode()).isEqualTo(HttpStatus.FOUND);
     }

@@ -21,16 +21,15 @@ import java.util.List;
 /**
  * The policy-exception workflow (REQ-D-006).
  *
- * <p>An exception is requested, then approved by a named human with a compensating control and an
- * expiry. Two rules are enforced here rather than left to discipline: an approval must name a
- * compensating control, and it must state when the waiver lapses. An exception with neither is how
- * a temporary deviation quietly becomes the new standard.
+ * <p>An exception is requested, then approved by a named human with a compensating control and
+ * an expiry. Both are required here rather than left to discipline, because a waiver with
+ * neither quietly becomes the new standard.
  */
 @RestController
 @RequestMapping("/api/v1/policy-exceptions")
 public class PolicyExceptionController {
 
-    /** Maximum life of a waiver. Longer than this and it is a policy change, not an exception. */
+    /** Longest a waiver can run. Beyond this it is a policy change, not an exception. */
     private static final Duration MAX_VALIDITY = Duration.ofDays(90);
 
     public record RequestException(
@@ -62,7 +61,7 @@ public class PolicyExceptionController {
         return store.findAll();
     }
 
-    /** Records a request. It is not approved and grants nothing until a decision arrives. */
+    /** Records a request. It grants nothing until someone decides on it. */
     @PostMapping
     public ResponseEntity<PolicyException> request(@Valid @RequestBody RequestException request) {
         String id = "exc_" + Long.toHexString(clock.millis());

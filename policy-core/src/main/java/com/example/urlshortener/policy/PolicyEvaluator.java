@@ -8,13 +8,11 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Evaluates a versioned policy set against the facts of one run.
+ * Evaluates a versioned policy set against one run.
  *
- * <p>Two rules govern the result and both are asserted by tests:
- * a mandatory {@link PolicyOutcome#FAIL} sets {@code releaseBlocked}, and an
- * {@link PolicyOutcome#EXCEPTION_REQUESTED} only becomes a pass when a matching exception is
- * both approved and unexpired at evaluation time. An exception that has lapsed is reported as
- * a FAIL with the lapse named in the reason, so nothing is waived by the passage of time.
+ * <p>A mandatory FAIL sets releaseBlocked. An EXCEPTION_REQUESTED only becomes a pass when a
+ * matching exception is approved and still valid; a lapsed one is reported as a FAIL naming the
+ * expiry, so nothing is waived just by time passing.
  */
 public final class PolicyEvaluator {
 

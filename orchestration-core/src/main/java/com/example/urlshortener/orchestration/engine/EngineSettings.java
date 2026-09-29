@@ -6,8 +6,8 @@ import java.time.Duration;
  * Engine tuning.
  *
  * @param maxParallelism  how many node attempts may run at once
- * @param approvalTimeout how long a gate waits before safe-stopping (never before approving)
- * @param jitterFactor    proportion of random jitter applied to retry backoff, to avoid lockstep retries
+ * @param approvalTimeout how long a gate waits before safe-stopping (it never approves)
+ * @param jitterFactor    random spread applied to retry backoff, to avoid lockstep retries
  */
 public record EngineSettings(int maxParallelism, Duration approvalTimeout, double jitterFactor) {
 

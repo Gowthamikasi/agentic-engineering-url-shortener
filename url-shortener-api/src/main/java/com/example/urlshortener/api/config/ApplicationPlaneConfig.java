@@ -23,9 +23,8 @@ import java.util.EnumSet;
 /**
  * Wires the application plane.
  *
- * <p>Filter order is significant: security headers are set first so they are present even on a
- * rejected request, authentication runs next so the rate limiter can bucket by key id rather than
- * by address, and the rate limiter runs last before the controllers.
+ * <p>Filter order matters: headers first so they are set even on a rejected request,
+ * then authentication so the rate limiter can bucket by key id, then the rate limiter.
  */
 @Configuration
 @EnableConfigurationProperties(UrlShortenerProperties.class)
@@ -41,7 +40,7 @@ public class ApplicationPlaneConfig {
         return new UrlValidator(new InetAddressHostResolver(), properties.getValidation().isEnforceAddressChecks());
     }
 
-    /** Mints with the configured alphabet only; see {@link #shortCodeValidator()} for lookup. */
+    /** Mints with the configured alphabet only. Lookup is wider, see below. */
     @Bean
     public ShortCodeGenerator shortCodeGenerator(UrlShortenerProperties properties) {
         return new ShortCodeGenerator(
@@ -50,10 +49,7 @@ public class ApplicationPlaneConfig {
                 new SecureRandom());
     }
 
-    /**
-     * Lookup accepts every alphabet the system has ever minted with, which is what keeps links
-     * created before an alphabet change resolvable after it.
-     */
+    /** Lookup accepts every alphabet we have ever minted with, so old codes keep working. */
     @Bean
     public ShortCodeValidator shortCodeValidator() {
         return new ShortCodeValidator(EnumSet.allOf(Alphabet.class), 1, 16);

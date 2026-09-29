@@ -9,10 +9,9 @@ import java.util.Map;
 /**
  * The checks referenced by {@code policies/policy-set.v1.0.0.json}.
  *
- * <p>Each check answers from facts the run actually produced. Where a fact is missing the check
- * says so rather than assuming the good case: a scan that never ran is not a clean scan, so it
- * raises an exception request that a human has to decide, and a rule that genuinely does not
- * apply to this run returns NOT_APPLICABLE so it can be counted separately from a pass.
+ * <p>Each one answers from facts the run produced. A missing fact is reported as missing: a scan
+ * that never ran is not a clean scan, and a rule that does not apply returns NOT_APPLICABLE so it
+ * is counted separately from a pass.
  */
 public final class DefaultPolicyChecks {
 

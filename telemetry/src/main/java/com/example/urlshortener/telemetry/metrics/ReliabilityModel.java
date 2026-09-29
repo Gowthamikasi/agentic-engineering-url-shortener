@@ -6,12 +6,10 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * The read model the reliability calculator consumes.
+ * The read model the reliability calculator works from.
  *
- * <p>These types exist so {@code telemetry} can compute MTTR without depending on the
- * orchestration engine: the control plane projects its journal into these records, and the
- * calculator never sees engine internals. Everything here is derived from persisted journal
- * rows — nothing is hand-entered.
+ * <p>These types let telemetry compute MTTR without depending on the engine: the control plane
+ * projects its journal into them. Everything here comes from stored rows.
  */
 public final class ReliabilityModel {
 
