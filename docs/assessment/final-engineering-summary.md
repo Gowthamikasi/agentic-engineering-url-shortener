@@ -5,7 +5,7 @@
 | Deliverable | Agentic Software Engineering System — URL Shortener |
 | Date | 2026-09-29 |
 | Release decision | **READY WITH ACCEPTED LIMITATIONS** (§21) |
-| Tests | 158, all passing |
+| Tests | 197 — 181 unit/contract plus 16 integration — all passing |
 | Scenarios executed | 3 of 3, all `COMPLETED` |
 
 Everything reported here was produced by executing the system. Where something was not executed,
@@ -31,7 +31,7 @@ Two planes in one process, sharing nothing above the database:
   rollback and compensation, safe stop, resume, dynamic replanning, versioned policy guardrails, a
   hash-chained audit trail, and reliability metrics including MTTR.
 
-Twelve Maven modules, 158 tests, no runtime dependencies.
+Twelve Maven modules, 197 tests, no runtime dependencies.
 
 ## 3. Requirement interpretation
 
@@ -60,6 +60,7 @@ See [architecture.md](../architecture/architecture.md). The decisions with the m
 | Decision | Why it matters |
 |---|---|
 | Two planes, neither depending on the other (ADR-001) | The separation is a fact the build enforces, not a claim |
+| Entry **and** exit gates per node (ADR-007) | A stage that reports success without producing its declared output is a failure, and the engine can tell |
 | A custom DAG engine (ADR-005) | A framework would answer the assessed questions with its own semantics |
 | Journal as source of truth (ADR-006) | Every interesting question is a question about history |
 | Definition as versioned data (ADR-007) | The governed path is readable without reading the engine |
@@ -146,21 +147,29 @@ none. Outcome `COMPLETED` at v2, 65 audit rows.
 
 ## 13. Testing approach
 
-158 tests, no Docker, about two minutes. Unit tests for the domain; `@DataJpaTest` slices for
+197 tests, no Docker, about three minutes. Unit tests for the domain; `@DataJpaTest` slices for
 persistence including a concurrent-collision test; `MockMvc` contract tests for the full API;
 behavioural tests for the engine; ArchUnit for the module boundaries.
 
 The engine tests are deliberately weighted towards **negative** cases — what the system refuses to
 do is the governance claim.
 
+Sixteen of them are genuine **integration** tests: `@SpringBootTest` on a random port, driven over
+real HTTP with a real client. They exist because `MockMvc` stops short of the container — it does
+not produce real redirect responses, does not exercise the filter chain the way Tomcat does, and
+cannot show that the analytics queue eventually lands rows in the database. They drive a whole
+governed run through the API, including parking at a gate, deciding it, replanning, and verifying
+the audit chain afterwards.
+
 ## 14. Executed results
 
 ```
-url-shortener-domain           37    orchestration-core             44
-url-shortener-infrastructure    8    orchestration-agents            8
+url-shortener-domain           37    orchestration-core             59
+url-shortener-infrastructure    8    orchestration-agents           16
 url-shortener-api              24    app (ArchUnit)                  7
-telemetry                      12    ─────────────────────────────────
-policy-core                    18    TOTAL                         158
+telemetry                      12    app (integration, over HTTP)   16
+policy-core                    18    ─────────────────────────────────
+                                     TOTAL                         197
 ```
 
 All passing. Reproduce with `./mvnw verify`.
@@ -249,7 +258,13 @@ Stated plainly, because a prototype that overclaims is worse than one that is mo
 9. **DNS can change after creation**, so a host validated as public could later resolve privately.
 10. **Reliability figures come from three runs on one machine**, labelled `DEMONSTRATION`.
 11. **H2 concurrency differs from PostgreSQL**, so the concurrency test proves the code, not the engine.
-12. **The git history is a build history, not a red-green-refactor history.** Tests and
+12. **Brownfield impact analysis is a term search that follows references, not a semantic
+    understanding of the code.** It reads the real repository and names real files, and it reports
+    its own method and confidence. One consequence is visible in the brownfield bundle: the
+    highest-scoring file is the agent source that *describes* alphabets, because the repository
+    contains a description of itself. The scores and matched terms are published so a reviewer can
+    see exactly why each file was listed.
+13. **The git history is a build history, not a red-green-refactor history.** Tests and
     implementation were written together in one session. Where a defect was found by a test, that
     sequence is real and is described in §20; a general TDD claim over every task is not made.
 
@@ -272,12 +287,21 @@ Included because a summary with no failures in it is not a summary of real work:
   comment in the file.
 - **Nested Spring Data repository interfaces were not registered**, and nested JPA entities needed
   explicit entity names before JPQL could refer to them.
+- **Failsafe tests the packaged artifact, which here is a Spring Boot fat jar.** Its classes live
+  under `BOOT-INF/`, so `@SpringBootTest` could not resolve its own meta-annotations and every
+  integration test failed identically. Pointing Failsafe at the plain output directory fixed it.
+- **The test-runner agent read the report of the test that was running it.** During the integration
+  suite it picked up the in-flight Failsafe XML, parsed it as garbage, and failed the node. It now
+  reads Surefire output only — a workflow grading the test that launched it is circular anyway.
+- **Lineage stopped at the release gate.** A gate produces no artifact, so walking only the direct
+  dependencies left every downstream artifact with an empty provenance list, which made a claim in
+  the reviewer guide false. Artifact-less dependencies are now looked through.
 
 ## 21. Release decision
 
 **READY WITH ACCEPTED LIMITATIONS.**
 
-Ready because: the prototype builds and runs from a clean clone with only a JDK; 158 tests pass;
+Ready because: the prototype builds and runs from a clean clone with only a JDK; 197 tests pass;
 all three scenarios executed end to end and are materially different; every governance guarantee
 claimed is enforced by the state machine and covered by a negative test; all mandatory policies pass
 on every run; and the evidence is captured output rather than written examples.

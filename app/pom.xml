@@ -20,6 +20,12 @@
 
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
     <dependency><groupId>com.tngtech.archunit</groupId><artifactId>archunit-junit5</artifactId><scope>test</scope></dependency>
+    <!--
+      The JDK's HttpURLConnection cannot retry a streamed request body after a 401, which every
+      auth-rejection test triggers. Apache HttpClient handles it, and TestRestTemplate picks it
+      up automatically when it is on the classpath.
+    -->
+    <dependency><groupId>org.apache.httpcomponents.client5</groupId><artifactId>httpclient5</artifactId><scope>test</scope></dependency>
   </dependencies>
 
   <build>

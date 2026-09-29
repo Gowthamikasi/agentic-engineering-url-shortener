@@ -1,7 +1,7 @@
 {
   "name": "sdlc",
   "version": 1,
-  "description": "Governed SDLC workflow: requirement intake through release readiness, with human gates, parallel verification, and policy evaluation.",
+  "description": "Governed SDLC workflow: requirement intake through release readiness. Each node declares its entry gate (dependsOn plus branchCondition) and its exit gate (producesArtifacts), so a stage cannot be called successful without the output it owes the run.",
   "nodes": [
     {
       "id": "ingest",
@@ -10,30 +10,45 @@
       "timeoutMs": 15000,
       "maxAttempts": 2,
       "recoveryMode": "ROLLBACKABLE",
-      "description": "Accept the raw requirement and classify it as greenfield, brownfield or unclassified."
+      "description": "Accept the raw requirement and classify it as greenfield, brownfield or unclassified.",
+      "producesArtifacts": [
+        "RawRequirement"
+      ]
     },
     {
       "id": "normalize",
       "agentType": "RequirementNormalizeAgent",
-      "dependsOn": ["ingest"],
+      "dependsOn": [
+        "ingest"
+      ],
       "timeoutMs": 15000,
       "maxAttempts": 2,
       "recoveryMode": "ROLLBACKABLE",
-      "description": "Restate the requirement in testable form, folding in any clarification decision already recorded."
+      "description": "Restate the requirement in testable form, folding in any clarification decision already recorded.",
+      "producesArtifacts": [
+        "NormalizedRequirement"
+      ]
     },
     {
       "id": "quality-check",
       "agentType": "RequirementQualityAgent",
-      "dependsOn": ["normalize"],
+      "dependsOn": [
+        "normalize"
+      ],
       "timeoutMs": 30000,
       "maxAttempts": 1,
       "recoveryMode": "NONE",
-      "description": "Score completeness, consistency, testability, policy boundary and architecture boundary; decide whether clarification is required."
+      "description": "Score completeness, consistency, testability, policy boundary and architecture boundary; decide whether clarification is required.",
+      "producesArtifacts": [
+        "QualityReport"
+      ]
     },
     {
       "id": "clarify",
       "agentType": "HumanGateAgent",
-      "dependsOn": ["quality-check"],
+      "dependsOn": [
+        "quality-check"
+      ],
       "requiresApproval": true,
       "gateId": "clarify",
       "branchCondition": "#facts['quality.decision'] == 'ClarificationRequired'",
@@ -44,17 +59,25 @@
     {
       "id": "impact-analysis",
       "agentType": "ImpactAnalysisAgent",
-      "dependsOn": ["quality-check", "clarify"],
+      "dependsOn": [
+        "quality-check",
+        "clarify"
+      ],
       "branchCondition": "#input['kind'] == 'Brownfield'",
       "timeoutMs": 30000,
       "maxAttempts": 2,
       "recoveryMode": "ROLLBACKABLE",
-      "description": "For a brownfield change: impacted modules, interfaces, data, tests, docs, rollout and rollback."
+      "description": "For a brownfield change: impacted modules, interfaces, data, tests, docs, rollout and rollback.",
+      "producesArtifacts": [
+        "ImpactAnalysis"
+      ]
     },
     {
       "id": "impact-approval",
       "agentType": "HumanGateAgent",
-      "dependsOn": ["impact-analysis"],
+      "dependsOn": [
+        "impact-analysis"
+      ],
       "requiresApproval": true,
       "gateId": "impact-approval",
       "branchCondition": "#input['kind'] == 'Brownfield'",
@@ -64,106 +87,165 @@
     {
       "id": "decompose",
       "agentType": "DecomposeAgent",
-      "dependsOn": ["quality-check", "clarify", "impact-approval"],
+      "dependsOn": [
+        "quality-check",
+        "clarify",
+        "impact-approval"
+      ],
       "timeoutMs": 30000,
       "maxAttempts": 2,
       "recoveryMode": "ROLLBACKABLE",
-      "description": "Break the requirement into ordered tasks with dependencies and TDD flags."
+      "description": "Break the requirement into ordered tasks with dependencies and TDD flags.",
+      "producesArtifacts": [
+        "Decomposition"
+      ]
     },
     {
       "id": "contract-design",
       "agentType": "ContractAgent",
-      "dependsOn": ["decompose"],
+      "dependsOn": [
+        "decompose"
+      ],
       "timeoutMs": 30000,
       "maxAttempts": 2,
       "recoveryMode": "ROLLBACKABLE",
-      "description": "Decide the API contract impact and the resulting version change."
+      "description": "Decide the API contract impact and the resulting version change.",
+      "producesArtifacts": [
+        "ApiContract"
+      ]
     },
     {
       "id": "test-plan",
       "agentType": "TestPlanAgent",
-      "dependsOn": ["decompose"],
+      "dependsOn": [
+        "decompose"
+      ],
       "timeoutMs": 30000,
       "maxAttempts": 2,
       "recoveryMode": "ROLLBACKABLE",
-      "description": "Derive the acceptance tests each task must satisfy before implementation."
+      "description": "Derive the acceptance tests each task must satisfy before implementation.",
+      "producesArtifacts": [
+        "TestPlan"
+      ]
     },
     {
       "id": "implement",
       "agentType": "ImplementAgent",
-      "dependsOn": ["contract-design", "test-plan"],
+      "dependsOn": [
+        "contract-design",
+        "test-plan"
+      ],
       "joinType": "ALL",
       "timeoutMs": 60000,
       "maxAttempts": 2,
       "recoveryMode": "ROLLBACKABLE",
-      "description": "Apply the approved change set. Rollbackable: the change set can be reverted."
+      "description": "Apply the approved change set. Rollbackable: the change set can be reverted.",
+      "producesArtifacts": [
+        "ChangeSet"
+      ]
     },
     {
       "id": "unit-tests",
       "agentType": "TestRunnerAgent",
-      "dependsOn": ["implement"],
+      "dependsOn": [
+        "implement"
+      ],
       "timeoutMs": 60000,
       "maxAttempts": 3,
       "backoffBaseMs": 500,
       "recoveryMode": "ROLLBACKABLE",
-      "description": "Run the unit suite."
+      "description": "Run the unit suite.",
+      "producesArtifacts": [
+        "TestReport"
+      ]
     },
     {
       "id": "contract-tests",
       "agentType": "TestRunnerAgent",
-      "dependsOn": ["implement"],
+      "dependsOn": [
+        "implement"
+      ],
       "timeoutMs": 60000,
       "maxAttempts": 3,
       "backoffBaseMs": 500,
       "recoveryMode": "ROLLBACKABLE",
-      "description": "Run the contract suite against the published API contract."
+      "description": "Run the contract suite against the published API contract.",
+      "producesArtifacts": [
+        "TestReport"
+      ]
     },
     {
       "id": "security-scan",
       "agentType": "SecurityScanAgent",
-      "dependsOn": ["implement"],
+      "dependsOn": [
+        "implement"
+      ],
       "timeoutMs": 60000,
       "maxAttempts": 2,
       "backoffBaseMs": 500,
       "recoveryMode": "COMPENSATABLE",
-      "description": "Scan dependencies and configuration. Compensatable: an external scan quota is consumed and cannot be un-consumed."
+      "description": "Scan dependencies and configuration. Compensatable: an external scan quota is consumed and cannot be un-consumed.",
+      "producesArtifacts": [
+        "SecurityReport"
+      ]
     },
     {
       "id": "regression",
       "agentType": "TestRunnerAgent",
-      "dependsOn": ["implement"],
+      "dependsOn": [
+        "implement"
+      ],
       "branchCondition": "#input['kind'] == 'Brownfield'",
       "timeoutMs": 60000,
       "maxAttempts": 1,
       "recoveryMode": "ROLLBACKABLE",
-      "description": "Brownfield only: prove that artefacts created before the change still work."
+      "description": "Brownfield only: prove that artefacts created before the change still work.",
+      "producesArtifacts": [
+        "TestReport"
+      ]
     },
     {
       "id": "docs",
       "agentType": "DocsAgent",
-      "dependsOn": ["implement"],
+      "dependsOn": [
+        "implement"
+      ],
       "timeoutMs": 30000,
       "maxAttempts": 2,
       "backoffBaseMs": 500,
       "fallbackAllowed": true,
       "criticality": "NON_BLOCKING",
       "recoveryMode": "ROLLBACKABLE",
-      "description": "Regenerate documentation. Non-blocking: may fall back to a degraded result rather than stop the run."
+      "description": "Regenerate documentation. Non-blocking: may fall back to a degraded result rather than stop the run.",
+      "producesArtifacts": [
+        "DocsArtifact"
+      ]
     },
     {
       "id": "policy-eval",
       "agentType": "PolicyEvaluationAgent",
-      "dependsOn": ["unit-tests", "contract-tests", "security-scan", "regression", "docs"],
+      "dependsOn": [
+        "unit-tests",
+        "contract-tests",
+        "security-scan",
+        "regression",
+        "docs"
+      ],
       "joinType": "ALL",
       "timeoutMs": 30000,
       "maxAttempts": 1,
       "recoveryMode": "NONE",
-      "description": "Evaluate the versioned policy set over everything the run produced. Joins the parallel verification branch."
+      "description": "Evaluate the versioned policy set over everything the run produced. Joins the parallel verification branch.",
+      "producesArtifacts": [
+        "PolicyEvaluation"
+      ]
     },
     {
       "id": "release-gate",
       "agentType": "HumanGateAgent",
-      "dependsOn": ["policy-eval"],
+      "dependsOn": [
+        "policy-eval"
+      ],
       "requiresApproval": true,
       "gateId": "release-gate",
       "recoveryMode": "NONE",
@@ -172,11 +254,16 @@
     {
       "id": "summary",
       "agentType": "SummaryAgent",
-      "dependsOn": ["release-gate"],
+      "dependsOn": [
+        "release-gate"
+      ],
       "timeoutMs": 30000,
       "maxAttempts": 2,
       "recoveryMode": "ROLLBACKABLE",
-      "description": "Assemble the engineering summary for this run from its artifacts, decisions and policy evaluation."
+      "description": "Assemble the engineering summary for this run from its artifacts, decisions and policy evaluation.",
+      "producesArtifacts": [
+        "RunSummary"
+      ]
     }
   ]
 }

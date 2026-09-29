@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example/schemas/approval-decision.schema.json",
+  "title": "Approval decision",
+  "description": "A human decision at a gate. Written before the node transitions, so a state change can never exist without the decision that justified it.",
+  "type": "object",
+  "required": ["decisionId", "gateId", "decision", "actor", "rationale", "at"],
+  "properties": {
+    "decisionId": { "type": "string" },
+    "gateId": { "type": "string" },
+    "decision": { "enum": ["APPROVE", "READY", "READY_WITH_ACCEPTED_LIMITATIONS", "REJECT", "NOT_READY", "SAFE_STOP"] },
+    "actor": { "type": "string", "minLength": 1, "description": "Required. Asserted by the API key holder rather than authenticated - see ADR-015." },
+    "rationale": { "type": "string", "minLength": 10, "description": "Required. An approval with no stated reason is indistinguishable from a rubber stamp when the run is reviewed months later." },
+    "conditions": { "type": ["string", "null"] },
+    "at": { "type": "string", "format": "date-time" }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example/schemas/workflow-state.schema.json",
+  "title": "Workflow run state",
+  "description": "The materialised snapshot of a run, as returned by GET /api/v1/workflows/{runId}. Derived from the journal, which is the source of truth.",
+  "type": "object",
+  "required": ["runId", "definitionVersion", "policyVersion", "state", "nodes"],
+  "properties": {
+    "runId": { "type": "string" },
+    "definitionName": { "type": "string" },
+    "definitionVersion": { "type": "integer", "minimum": 1, "description": "Increments on replanning." },
+    "policyVersion": { "type": "string" },
+    "state": {
+      "enum": ["CREATED", "RUNNING", "SUSPENDED", "AWAITING_CLARIFICATION", "COMPLETED", "COMPLETED_WITH_LIMITATIONS", "SAFE_STOPPED", "REJECTED", "FAILED"],
+      "description": "SUSPENDED and AWAITING_CLARIFICATION are resumable; the rest are terminal and deterministic given the journal."
+    },
+    "terminalOutcome": { "type": ["string", "null"] },
+    "releaseBlocked": { "type": "boolean" },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "state", "attempts"],
+        "properties": {
+          "id": { "type": "string" },
+          "state": { "enum": ["PENDING", "BLOCKED", "READY", "RUNNING", "RETRYING", "TIMED_OUT", "AWAITING_APPROVAL", "APPROVED", "REJECTED", "FALLING_BACK", "ROLLING_BACK", "ROLLED_BACK", "COMPENSATING", "COMPENSATED", "SAFE_STOPPED", "SKIPPED", "INVALIDATED", "SUCCEEDED", "FAILED"] },
+          "attempts": { "type": "integer", "minimum": 0, "description": "Engine-owned. Agents cannot retry internally, so this count is the truth." },
+          "lastFailureClass": { "enum": ["TRANSIENT", "PERMANENT", null] },
+          "waitingOn": { "type": "array", "items": { "type": "string" }, "description": "Dependencies still outstanding - the synchronisation evidence." },
+          "artifactIds": { "type": "array", "items": { "type": "string" } },
+          "degraded": { "type": "boolean" }
+        }
+      }
+    },
+    "decisions": { "type": "array", "items": { "$ref": "approval-decision.schema.json" } },
+    "replanning": { "type": "array", "items": { "type": "string" } }
+  }
+}

@@ -13,7 +13,7 @@ class DagValidatorTest {
 
     private static NodeDefinition node(String id, String... dependsOn) {
         return new NodeDefinition(id, "TestAgent", List.of(dependsOn), null, false, null,
-                1000, 1, 100, null, null, null, false, false, null, id);
+                1000, 1, 100, null, null, null, false, false, null, List.of(), id);
     }
 
     private static WorkflowDefinition definition(NodeDefinition... nodes) {
@@ -75,7 +75,7 @@ class DagValidatorTest {
     @Test
     void a_node_without_an_agent_type_is_rejected() {
         NodeDefinition orphan = new NodeDefinition("a", "  ", List.of(), null, false, null,
-                1000, 1, 100, null, null, null, false, false, null, null);
+                1000, 1, 100, null, null, null, false, false, null, List.of(), null);
 
         assertThatThrownBy(() -> DagValidator.validate(definition(orphan)))
                 .isInstanceOf(DagValidator.InvalidDefinitionException.class)

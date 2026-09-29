@@ -66,12 +66,12 @@ class WorkflowEngineTest {
 
     private static NodeDefinition node(String id, String agentType, List<String> dependsOn) {
         return new NodeDefinition(id, agentType, dependsOn, JoinType.ALL, false, null,
-                5_000, 1, 50, RecoveryMode.NONE, Criticality.BLOCKING, null, false, false, null, id);
+                5_000, 1, 50, RecoveryMode.NONE, Criticality.BLOCKING, null, false, false, null, List.of(), id);
     }
 
     private static NodeDefinition gate(String id, List<String> dependsOn, String supersedes) {
         return new NodeDefinition(id, "HumanGateAgent", dependsOn, JoinType.ALL, true, id,
-                5_000, 1, 50, RecoveryMode.NONE, Criticality.BLOCKING, null, false, false, supersedes, id);
+                5_000, 1, 50, RecoveryMode.NONE, Criticality.BLOCKING, null, false, false, supersedes, List.of(), id);
     }
 
     private static WorkflowDefinition definition(NodeDefinition... nodes) {
@@ -189,7 +189,7 @@ class WorkflowEngineTest {
     void a_node_whose_branch_condition_is_false_is_skipped_with_a_stated_reason() {
         NodeDefinition conditional = new NodeDefinition("brownfield-only", "TestAgent", List.of("root"),
                 JoinType.ALL, false, null, 5_000, 1, 50, RecoveryMode.NONE, Criticality.BLOCKING,
-                "#input['kind'] == 'Brownfield'", false, false, null, null);
+                "#input['kind'] == 'Brownfield'", false, false, null, List.of(), null);
 
         WorkflowEngine engine = engineWith(List.of(new TestAgents.RecordingAgent("TestAgent")));
         WorkflowInstance instance = engine.start(
@@ -209,7 +209,7 @@ class WorkflowEngineTest {
     void a_branch_condition_that_holds_lets_the_node_run() {
         NodeDefinition conditional = new NodeDefinition("brownfield-only", "TestAgent", List.of("root"),
                 JoinType.ALL, false, null, 5_000, 1, 50, RecoveryMode.NONE, Criticality.BLOCKING,
-                "#input['kind'] == 'Brownfield'", false, false, null, null);
+                "#input['kind'] == 'Brownfield'", false, false, null, List.of(), null);
 
         WorkflowEngine engine = engineWith(List.of(new TestAgents.RecordingAgent("TestAgent")));
         WorkflowInstance instance = engine.start(
@@ -225,7 +225,7 @@ class WorkflowEngineTest {
     @Test
     void a_transient_failure_is_retried_within_the_budget_and_then_succeeds() {
         NodeDefinition flaky = new NodeDefinition("flaky", "Flaky", List.of(), JoinType.ALL, false, null,
-                5_000, 3, 50, RecoveryMode.NONE, Criticality.BLOCKING, null, false, false, null, null);
+                5_000, 3, 50, RecoveryMode.NONE, Criticality.BLOCKING, null, false, false, null, List.of(), null);
 
         WorkflowEngine engine = engineWith(List.of(new TestAgents.FlakyAgent("Flaky", 1, FailureClass.TRANSIENT)));
         WorkflowInstance instance = engine.start(definition(flaky), input(), "1.0.0");
@@ -241,7 +241,7 @@ class WorkflowEngineTest {
     @Test
     void the_retry_budget_is_bounded_and_the_node_stops_when_it_is_exhausted() {
         NodeDefinition flaky = new NodeDefinition("flaky", "Flaky", List.of(), JoinType.ALL, false, null,
-                5_000, 3, 20, RecoveryMode.NONE, Criticality.BLOCKING, null, false, false, null, null);
+                5_000, 3, 20, RecoveryMode.NONE, Criticality.BLOCKING, null, false, false, null, List.of(), null);
 
         WorkflowEngine engine = engineWith(List.of(new TestAgents.FlakyAgent("Flaky", 99, FailureClass.TRANSIENT)));
         WorkflowInstance instance = engine.start(definition(flaky), input(), "1.0.0");
@@ -256,7 +256,7 @@ class WorkflowEngineTest {
     @Test
     void a_permanent_failure_is_not_retried_at_all() {
         NodeDefinition permanent = new NodeDefinition("hard", "Failing", List.of(), JoinType.ALL, false, null,
-                5_000, 3, 20, RecoveryMode.NONE, Criticality.BLOCKING, null, false, false, null, null);
+                5_000, 3, 20, RecoveryMode.NONE, Criticality.BLOCKING, null, false, false, null, List.of(), null);
 
         WorkflowEngine engine = engineWith(List.of(new TestAgents.FailingAgent("Failing", FailureClass.PERMANENT)));
         WorkflowInstance instance = engine.start(definition(permanent), input(), "1.0.0");
@@ -270,7 +270,7 @@ class WorkflowEngineTest {
     @Test
     void an_attempt_that_exceeds_its_timeout_is_recorded_as_a_timeout() {
         NodeDefinition slow = new NodeDefinition("slow", "Slow", List.of(), JoinType.ALL, false, null,
-                200, 1, 20, RecoveryMode.NONE, Criticality.BLOCKING, null, false, false, null, null);
+                200, 1, 20, RecoveryMode.NONE, Criticality.BLOCKING, null, false, false, null, List.of(), null);
 
         WorkflowEngine engine = engineWith(List.of(new TestAgents.SlowAgent("Slow", 2_000)));
         WorkflowInstance instance = engine.start(definition(slow), input(), "1.0.0");
@@ -283,7 +283,7 @@ class WorkflowEngineTest {
     @Test
     void a_node_with_a_fallback_completes_degraded_rather_than_stopping_the_run() {
         NodeDefinition withFallback = new NodeDefinition("docs", "Failing", List.of(), JoinType.ALL, false, null,
-                5_000, 1, 20, RecoveryMode.ROLLBACKABLE, Criticality.NON_BLOCKING, null, true, false, null, null);
+                5_000, 1, 20, RecoveryMode.ROLLBACKABLE, Criticality.NON_BLOCKING, null, true, false, null, List.of(), null);
 
         WorkflowEngine engine = engineWith(List.of(new TestAgents.FailingAgent("Failing", FailureClass.PERMANENT)));
         WorkflowInstance instance = engine.start(definition(withFallback), input(), "1.0.0");
@@ -298,9 +298,9 @@ class WorkflowEngineTest {
     @Test
     void a_rollbackable_node_rolls_back_and_a_compensatable_node_compensates() {
         NodeDefinition rollbackable = new NodeDefinition("patch", "Failing", List.of(), JoinType.ALL, false, null,
-                5_000, 1, 20, RecoveryMode.ROLLBACKABLE, Criticality.BLOCKING, null, false, false, null, null);
+                5_000, 1, 20, RecoveryMode.ROLLBACKABLE, Criticality.BLOCKING, null, false, false, null, List.of(), null);
         NodeDefinition compensatable = new NodeDefinition("scan", "Failing", List.of(), JoinType.ALL, false, null,
-                5_000, 1, 20, RecoveryMode.COMPENSATABLE, Criticality.BLOCKING, null, false, false, null, null);
+                5_000, 1, 20, RecoveryMode.COMPENSATABLE, Criticality.BLOCKING, null, false, false, null, List.of(), null);
 
         WorkflowEngine engine = engineWith(List.of(new TestAgents.FailingAgent("Failing", FailureClass.PERMANENT)));
         WorkflowInstance instance = engine.start(definition(rollbackable, compensatable), input(), "1.0.0");
@@ -318,7 +318,7 @@ class WorkflowEngineTest {
     @Test
     void a_blocking_failure_blocks_its_downstream_subgraph() {
         NodeDefinition failing = new NodeDefinition("root", "Failing", List.of(), JoinType.ALL, false, null,
-                5_000, 1, 20, RecoveryMode.NONE, Criticality.BLOCKING, null, false, false, null, null);
+                5_000, 1, 20, RecoveryMode.NONE, Criticality.BLOCKING, null, false, false, null, List.of(), null);
 
         WorkflowEngine engine = engineWith(List.of(
                 new TestAgents.FailingAgent("Failing", FailureClass.PERMANENT),
@@ -529,6 +529,100 @@ class WorkflowEngineTest {
         assertThat(summary.inputArtifactIds())
                 .as("the summary must trace back through the gate to what 'produce' made")
                 .containsExactlyElementsOf(instance.node("produce").artifactIds());
+    }
+
+    // ---------------------------------------------------------------- exit gates
+
+    /** A node that declares output and produces it passes its exit gate. */
+    @Test
+    void a_node_that_produces_its_declared_artifact_passes_the_exit_gate() {
+        NodeDefinition producer = new NodeDefinition("produce", "TestAgent", List.of(), JoinType.ALL, false,
+                null, 5_000, 1, 50, RecoveryMode.NONE, Criticality.BLOCKING, null, false, false, null,
+                List.of("Result"), null);
+
+        WorkflowEngine engine = engineWith(List.of(new TestAgents.RecordingAgent("TestAgent")));
+        WorkflowInstance instance = engine.start(definition(producer), input(), "1.0.0");
+        assertThat(engine.awaitQuiescence(instance.runId(), 10_000)).isTrue();
+
+        assertThat(instance.node("produce").state()).isEqualTo(NodeState.SUCCEEDED);
+        assertThat(journal.actionsFor(instance.runId(), "produce"))
+                .doesNotContain(AuditActions.EXIT_GATE_FAILED);
+    }
+
+    /**
+     * The exit gate is what stops an agent's claim of success from being taken at face value.
+     * Without it a stage could silently produce nothing and every downstream node would work from
+     * a gap that nothing reported.
+     */
+    @Test
+    void a_node_that_reports_success_without_its_declared_artifact_fails_the_exit_gate() {
+        NodeDefinition liar = new NodeDefinition("liar", "Empty", List.of(), JoinType.ALL, false, null,
+                5_000, 1, 50, RecoveryMode.NONE, Criticality.BLOCKING, null, false, false, null,
+                List.of("Decomposition"), null);
+
+        WorkflowEngine engine = engineWith(List.of(new EmptyHandedAgent()));
+        WorkflowInstance instance = engine.start(definition(liar), input(), "1.0.0");
+        assertThat(engine.awaitQuiescence(instance.runId(), 10_000)).isTrue();
+
+        assertThat(instance.node("liar").state()).isNotEqualTo(NodeState.SUCCEEDED);
+        assertThat(journal.actionsFor(instance.runId(), "liar")).contains(AuditActions.EXIT_GATE_FAILED);
+        assertThat(instance.node("liar").lastFailureReason()).contains("Decomposition");
+        assertThat(instance.state()).isEqualTo(InstanceState.SAFE_STOPPED);
+    }
+
+    /** A missing declared output is a defect in the node, so repeating it cannot help. */
+    @Test
+    void an_exit_gate_failure_is_permanent_and_is_not_retried() {
+        NodeDefinition liar = new NodeDefinition("liar", "Empty", List.of(), JoinType.ALL, false, null,
+                5_000, 3, 20, RecoveryMode.NONE, Criticality.BLOCKING, null, false, false, null,
+                List.of("Decomposition"), null);
+
+        WorkflowEngine engine = engineWith(List.of(new EmptyHandedAgent()));
+        WorkflowInstance instance = engine.start(definition(liar), input(), "1.0.0");
+        engine.awaitQuiescence(instance.runId(), 10_000);
+
+        assertThat(instance.node("liar").attempts()).isEqualTo(1);
+        assertThat(journal.actionsFor(instance.runId(), "liar")).doesNotContain(AuditActions.NODE_RETRY_SCHEDULED);
+    }
+
+    /** A node that declares no output has no exit gate, and must not be penalised for it. */
+    @Test
+    void a_node_with_no_declared_output_has_no_exit_gate() {
+        NodeDefinition quiet = new NodeDefinition("quiet", "Empty", List.of(), JoinType.ALL, false, null,
+                5_000, 1, 50, RecoveryMode.NONE, Criticality.BLOCKING, null, false, false, null,
+                List.of(), null);
+
+        WorkflowEngine engine = engineWith(List.of(new EmptyHandedAgent()));
+        WorkflowInstance instance = engine.start(definition(quiet), input(), "1.0.0");
+        engine.awaitQuiescence(instance.runId(), 10_000);
+
+        assertThat(instance.node("quiet").state()).isEqualTo(NodeState.SUCCEEDED);
+    }
+
+    /** Every producing node in the shipped definition declares what it owes the run. */
+    @Test
+    void the_shipped_definition_declares_an_exit_gate_for_every_executing_node() {
+        WorkflowDefinition sdlc = new WorkflowDefinitionLoader().fromClasspath("/workflows/sdlc.v1.json");
+
+        assertThat(sdlc.nodes())
+                .filteredOn(n -> !n.requiresApproval())
+                .allSatisfy(n -> assertThat(n.hasExitGate())
+                        .as("node '%s' declares no output", n.id())
+                        .isTrue());
+    }
+
+    /** Reports success and hands back nothing. */
+    private static final class EmptyHandedAgent implements StageAgent {
+
+        @Override
+        public String agentType() {
+            return "Empty";
+        }
+
+        @Override
+        public StageResult execute(StageContext context) {
+            return StageResult.success("claimed success, produced nothing").build();
+        }
     }
 
     // ---------------------------------------------------------------- misc

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example/schemas/audit-event.schema.json",
+  "title": "Audit event",
+  "description": "One row of the append-only, hash-chained audit trail, as returned by GET /api/v1/workflows/{runId}/audit in JSON Lines form. There is no update or delete operation on this record anywhere in the system.",
+  "type": "object",
+  "required": ["seq", "ts", "actorType", "action", "prevHash", "hash"],
+  "properties": {
+    "seq": { "type": "integer", "minimum": 1, "description": "Unique per run. This is what stops a restarted scheduler appending a duplicate." },
+    "ts": { "type": "string", "format": "date-time" },
+    "actorType": { "enum": ["HUMAN", "AGENT", "ENGINE", "SYSTEM"], "description": "Every action is attributed. An unattributed row would defeat the purpose of the trail." },
+    "actorId": { "type": ["string", "null"] },
+    "action": { "type": "string", "description": "From a closed vocabulary, so the reliability calculator can derive MTTR from these rows rather than from hand-entered numbers." },
+    "target": { "type": ["string", "null"] },
+    "result": { "type": ["string", "null"] },
+    "reason": { "type": ["string", "null"] },
+    "policyVersion": { "type": ["string", "null"], "description": "The policy set this run was evaluated against (REQ-D-003)." },
+    "definitionVersion": { "type": "integer", "minimum": 1 },
+    "prevHash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "The previous row's hash; all zeroes for the first row of a run." },
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 over this row's content plus prevHash. Editing a row breaks every hash after it." }
+  }
+}

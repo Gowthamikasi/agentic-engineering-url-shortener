@@ -22,6 +22,7 @@
     <picocli.version>4.7.6</picocli.version>
     <logstash-encoder.version>7.4</logstash-encoder.version>
     <jacoco.version>0.8.12</jacoco.version>
+    <json-schema-validator.version>1.4.0</json-schema-validator.version>
   </properties>
 
   <modules>
@@ -87,6 +88,11 @@
         <artifactId>logstash-logback-encoder</artifactId>
         <version>${logstash-encoder.version}</version>
       </dependency>
+      <dependency>
+        <groupId>com.networknt</groupId>
+        <artifactId>json-schema-validator</artifactId>
+        <version>${json-schema-validator.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -138,6 +144,14 @@
         <configuration>
           <groups>e2e</groups>
           <includes><include>**/*E2ETest.java</include></includes>
+          <!--
+            Failsafe defaults to testing the packaged artifact. For the app module that artifact is
+            a Spring Boot fat jar, whose classes live under BOOT-INF/ and are therefore invisible to
+            the normal classloader - which makes @SpringBootTest fail to resolve its own
+            meta-annotations. Pointing at the plain output directory tests the same classes the
+            jar was built from.
+          -->
+          <classesDirectory>${project.build.outputDirectory}</classesDirectory>
         </configuration>
         <executions>
           <execution>

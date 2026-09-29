@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example/schemas/policy-evaluation.schema.json",
+  "title": "Policy evaluation",
+  "description": "The verdict of one versioned policy set over one run, produced by the policy-eval node.",
+  "type": "object",
+  "required": ["policyVersion", "summary", "releaseBlocked", "evaluations"],
+  "properties": {
+    "policyVersion": { "type": "string" },
+    "summary": { "type": "string", "description": "Counts by outcome, e.g. 'PASS:10 FAIL:0 EXC:1 NA:2'." },
+    "releaseBlocked": { "type": "boolean", "description": "True when any mandatory rule failed. The node returns this as a failure, so the release gate is blocked by the engine's dependency rule rather than by a human noticing a field." },
+    "blockingPolicyIds": { "type": "array", "items": { "type": "string" } },
+    "evaluations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["policyId", "domain", "mandatory", "outcome"],
+        "properties": {
+          "policyId": { "type": "string" },
+          "domain": { "enum": ["SECURITY", "COMPLIANCE", "LICENSING", "CHANGE_CONTROL", "TESTING"] },
+          "mandatory": { "type": "boolean" },
+          "outcome": {
+            "enum": ["PASS", "FAIL", "EXCEPTION_REQUESTED", "NOT_APPLICABLE"],
+            "description": "Closed by design (REQ-D-004). NOT_APPLICABLE is counted separately from PASS so it cannot inflate the pass total, and EXCEPTION_REQUESTED marks a gap a human must decide rather than a proven violation."
+          },
+          "reason": { "type": ["string", "null"] },
+          "evidence": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

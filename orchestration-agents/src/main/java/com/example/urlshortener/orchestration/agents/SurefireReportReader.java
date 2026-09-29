@@ -12,11 +12,15 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 /**
- * Reads real Surefire and Failsafe XML reports from the working tree.
+ * Reads the real Surefire XML reports the build produced.
  *
  * <p>The test-runner agent reports what the build actually produced rather than a number it made
  * up. That is the difference between evidence and decoration: if the reports are missing, this
  * returns an empty result and the agent fails the node, instead of quietly reporting a green run.
+ *
+ * <p>Only Surefire output is read. Failsafe's directory holds the end-to-end suite, which can be
+ * the run that is asking - reading a report while it is still being written yields garbage, and
+ * a workflow grading the test that launched it is circular anyway.
  */
 public final class SurefireReportReader {
 
@@ -86,9 +90,13 @@ public final class SurefireReportReader {
         try (Stream<Path> paths = Files.walk(projectRoot, 6)) {
             return paths
                     .filter(Files::isRegularFile)
+                    // Surefire only. Failsafe's directory holds the end-to-end suite, which may be
+                    // the very run asking this question - a report being written while it is read
+                    // parses as garbage, and a workflow reporting on the test that started it is
+                    // circular besides.
                     .filter(p -> {
                         String parent = p.getParent() == null ? "" : p.getParent().getFileName().toString();
-                        return parent.equals("surefire-reports") || parent.equals("failsafe-reports");
+                        return parent.equals("surefire-reports");
                     })
                     .filter(p -> p.getFileName().toString().startsWith("TEST-"))
                     .filter(p -> p.getFileName().toString().endsWith(".xml"))

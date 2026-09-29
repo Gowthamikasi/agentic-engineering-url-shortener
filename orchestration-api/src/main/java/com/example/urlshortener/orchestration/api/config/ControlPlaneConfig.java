@@ -1,5 +1,6 @@
 package com.example.urlshortener.orchestration.api.config;
 
+import com.example.urlshortener.orchestration.agents.CodebaseScanner;
 import com.example.urlshortener.orchestration.agents.DesignAgents;
 import com.example.urlshortener.orchestration.agents.GovernanceAgents;
 import com.example.urlshortener.orchestration.agents.RequirementAgents;
@@ -71,8 +72,14 @@ public class ControlPlaneConfig {
     }
 
     @Bean
+    public CodebaseScanner codebaseScanner(OrchestrationProperties properties) {
+        return new CodebaseScanner(Path.of(properties.getProjectRoot()));
+    }
+
+    @Bean
     public List<StageAgent> stageAgents(ObjectMapper objectMapper,
                                         SurefireReportReader reports,
+                                        CodebaseScanner codebaseScanner,
                                         PolicyEvaluator policyEvaluator,
                                         PolicySetLoader policySetLoader,
                                         PolicyExceptionStore exceptions,
@@ -82,7 +89,7 @@ public class ControlPlaneConfig {
                 new RequirementAgents.RequirementNormalizeAgent(objectMapper),
                 new RequirementAgents.RequirementQualityAgent(objectMapper),
                 new DesignAgents.HumanGateAgent(),
-                new DesignAgents.ImpactAnalysisAgent(objectMapper),
+                new DesignAgents.ImpactAnalysisAgent(objectMapper, codebaseScanner),
                 new DesignAgents.DecomposeAgent(objectMapper),
                 new DesignAgents.ContractAgent(objectMapper),
                 new DesignAgents.TestPlanAgent(objectMapper),

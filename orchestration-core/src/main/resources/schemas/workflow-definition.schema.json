@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example/schemas/workflow-definition.schema.json",
+  "title": "Workflow definition",
+  "description": "A governed SDLC workflow graph. Validated at load, before any node runs: a malformed definition must fail loudly when it is introduced, not silently in the middle of a run where a stalled scheduler and a broken graph look identical.",
+  "type": "object",
+  "required": ["name", "version", "nodes"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Definition name. Runs reference it by this."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Incremented by replanning. Stamped on every journal and audit row so a later version can never silently reinterpret an earlier run."
+    },
+    "description": { "type": "string" },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/node" }
+    }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": ["id", "agentType"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "Unique within the definition."
+        },
+        "agentType": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Must resolve to a registered agent. An unregistered type is what keeps a definition file from becoming a way to run arbitrary code."
+        },
+        "dependsOn": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "The node's entry gate. Every id must exist, and the graph must stay acyclic."
+        },
+        "joinType": { "enum": ["ALL", "ANY"] },
+        "requiresApproval": {
+          "type": "boolean",
+          "description": "Marks a human gate. Such a node is never dispatched to an agent."
+        },
+        "gateId": { "type": "string" },
+        "branchCondition": {
+          "type": "string",
+          "description": "SpEL over #input and #facts, evaluated read-only. A false condition skips the node with its reason recorded."
+        },
+        "timeoutMs": { "type": "integer", "minimum": 1 },
+        "maxAttempts": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Total attempts including the first. Retry is engine-owned; agents must not retry internally."
+        },
+        "backoffBaseMs": { "type": "integer", "minimum": 1 },
+        "recoveryMode": {
+          "enum": ["ROLLBACKABLE", "COMPENSATABLE", "NONE"],
+          "description": "Declared, never inferred. Calling something rollbackable when a side effect was already observed is what makes an audit trail lie."
+        },
+        "criticality": { "enum": ["BLOCKING", "NON_BLOCKING"] },
+        "fallbackAllowed": {
+          "type": "boolean",
+          "description": "Whether a permanent failure may be absorbed as a degraded success, which downgrades the run outcome."
+        },
+        "destructive": { "type": "boolean" },
+        "supersedes": {
+          "type": "string",
+          "description": "For a gate: the upstream node whose artifact this decision replaces. Setting it turns an approval into a replanning trigger."
+        },
+        "producesArtifacts": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "The node's exit gate. An agent that reports success without producing these has failed, not succeeded."
+        },
+        "description": { "type": "string" }
+      }
+    }
+  }
+}

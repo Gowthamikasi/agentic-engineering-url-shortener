@@ -469,12 +469,29 @@ public class WorkflowEngine implements AutoCloseable {
 
             Attempt outcome = runAttempt(instance, node, attempt);
 
+
             if (outcome.succeeded()) {
                 applyResult(instance, node, outcome.result());
-                instance.node(node.id()).markEnded(clock.instant());
-                transition(instance, node.id(), NodeState.SUCCEEDED, AuditActions.NODE_SUCCEEDED,
-                        ActorType.AGENT, node.agentType(), outcome.result().message(), null);
-                return;
+
+                // The exit gate. An agent reporting success is a claim; the declared output is the
+                // evidence. Accepting the claim without the evidence is how a stage silently
+                // produces nothing and every downstream node works from a gap.
+                List<String> missing = missingExitArtifacts(instance, node);
+                if (missing.isEmpty()) {
+                    instance.node(node.id()).markEnded(clock.instant());
+                    transition(instance, node.id(), NodeState.SUCCEEDED, AuditActions.NODE_SUCCEEDED,
+                            ActorType.AGENT, node.agentType(), outcome.result().message(), null);
+                    return;
+                }
+
+                String reason = "Exit gate not satisfied: " + node.id() + " reported success but did not "
+                        + "produce " + missing;
+                record(instance, node.id(), NodeState.RUNNING, NodeState.RUNNING,
+                        AuditActions.EXIT_GATE_FAILED, ActorType.ENGINE, "engine", "ExitGateFailed",
+                        reason, null);
+                // A missing declared output is a defect in the node, not a blip: retrying it would
+                // repeat the same gap, so it is permanent regardless of what the agent claimed.
+                outcome = Attempt.failed(FailureClass.PERMANENT, false, reason, outcome.result());
             }
 
             // Record whatever the failed attempt still produced, so a failure leaves evidence.
@@ -607,6 +624,27 @@ public class WorkflowEngine implements AutoCloseable {
         }
         instance.putFacts(result.facts());
         result.assumptions().forEach(instance::addAssumption);
+    }
+
+
+    /**
+     * Artifact types the node declared it produces but did not.
+     *
+     * <p>Types, not ids: the definition states what kind of thing a stage owes the run, and the
+     * engine assigns the identity. A node with no declared output has no exit gate and passes
+     * trivially.
+     */
+    private static List<String> missingExitArtifacts(WorkflowInstance instance, NodeDefinition node) {
+        if (!node.hasExitGate()) {
+            return List.of();
+        }
+        Set<String> produced = instance.node(node.id()).artifactIds().stream()
+                .map(instance::artifact)
+                .filter(Optional::isPresent)
+                .map(a -> a.get().type())
+                .collect(java.util.stream.Collectors.toSet());
+
+        return node.producesArtifacts().stream().filter(type -> !produced.contains(type)).toList();
     }
 
     /**

@@ -11,7 +11,7 @@ every state change journalled.
 | | |
 |---|---|
 | Stack | Java 21 · Spring Boot 3.3 · Maven multi-module · H2 (file) + Spring Data JPA + Flyway · JUnit 5 |
-| Tests | 158 across 8 modules, all passing |
+| Tests | 197 — 181 unit/contract plus 16 integration over real HTTP |
 | Runtime dependencies | none — one JVM, one database file |
 
 ---
@@ -21,7 +21,7 @@ every state change journalled.
 Prerequisite: **JDK 21**. Nothing else — no Docker, no database to install, no network at runtime.
 
 ```bash
-./mvnw verify                                    # build and run all 158 tests
+./mvnw verify                                    # build, 181 unit tests + 16 integration tests
 java -jar app/target/agentic-url-shortener.jar   # starts on http://localhost:8080
 ```
 
@@ -76,12 +76,13 @@ Start here, in this order:
 
 | # | Document | What it gives you |
 |---|---|---|
-| 1 | [docs/assessment/reviewer-guide.md](docs/assessment/reviewer-guide.md) | Every claim, with the command that proves it |
-| 2 | [docs/assessment/final-engineering-summary.md](docs/assessment/final-engineering-summary.md) | Plan, artifacts, risks, limitations, release decision |
-| 3 | [docs/architecture/architecture.md](docs/architecture/architecture.md) | Components, orchestration model, control flow |
-| 4 | [docs/scenarios/](docs/scenarios/) | The three executed scenarios and their evidence |
-| 5 | [docs/adr/](docs/adr/) | The decisions, with the options that were rejected |
-| 6 | [docs/traceability/matrix.md](docs/traceability/matrix.md) | Requirement → design → code → test |
+| 1 | [docs/assessment/requirements-coverage.md](docs/assessment/requirements-coverage.md) | The assignment clause by clause, against what exists |
+| 2 | [docs/assessment/reviewer-guide.md](docs/assessment/reviewer-guide.md) | Every claim, with the command that proves it |
+| 3 | [docs/assessment/final-engineering-summary.md](docs/assessment/final-engineering-summary.md) | Plan, artifacts, risks, limitations, release decision |
+| 4 | [docs/architecture/architecture.md](docs/architecture/architecture.md) | Components, orchestration model, control flow |
+| 5 | [docs/scenarios/](docs/scenarios/) | The three executed scenarios and their evidence |
+| 6 | [docs/adr/](docs/adr/) | The decisions, with the options that were rejected |
+| 7 | [docs/traceability/matrix.md](docs/traceability/matrix.md) | Requirement → design → code → test |
 
 ---
 
@@ -125,9 +126,15 @@ under a flood the queue drops events rather than making redirects wait.
 `GET /api/v1/metrics/reliability` · `/api/v1/policy-exceptions`
 
 The workflow is [a versioned JSON file](orchestration-core/src/main/resources/workflows/sdlc.v1.json)
-you can read without reading the engine. Nodes run when their dependencies are satisfied, which is
-what produces parallelism, joins and skipped branches from one rule. Retry, timeout and recovery are
-owned by the engine, not by agents, so the journal's attempt count is the truth.
+you can read without reading the engine, validated against
+[its published schema](specs/001-agentic-url-shortener/contracts/schemas/workflow-definition.schema.json)
+and then as a DAG before anything runs.
+
+Each node declares both gates. Its **entry** gate is its dependencies plus a branch condition; its
+**exit** gate is the artifact it owes the run — a node that reports success without producing its
+declared output has failed, not succeeded. Nodes run when their entry gate opens, which is what
+produces parallelism, joins and skipped branches from a single rule. Retry, timeout and recovery
+are owned by the engine, not by agents, so the journal's attempt count is the truth.
 
 A gate never advances on a timer: the approval timeout produces a safe stop, and there is no code
 path from elapsed time to an approved state.

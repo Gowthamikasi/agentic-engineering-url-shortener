@@ -29,6 +29,10 @@ import java.util.List;
  *                        Setting it is what turns an approval into a replanning trigger, so the
  *                        definition states which decisions can reshape the graph instead of the
  *                        engine inferring it.
+ * @param producesArtifacts the node's <strong>exit gate</strong>: artifact types that must exist
+ *                        before the node may be called successful. An agent that returns success
+ *                        without producing what the definition says it produces is a failure, not
+ *                        a success, and this is what makes the difference detectable.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record NodeDefinition(
@@ -47,16 +51,23 @@ public record NodeDefinition(
         boolean fallbackAllowed,
         boolean destructive,
         String supersedes,
+        List<String> producesArtifacts,
         String description) {
 
     public NodeDefinition {
         dependsOn = dependsOn == null ? List.of() : List.copyOf(dependsOn);
+        producesArtifacts = producesArtifacts == null ? List.of() : List.copyOf(producesArtifacts);
         joinType = joinType == null ? JoinType.ALL : joinType;
         recoveryMode = recoveryMode == null ? RecoveryMode.NONE : recoveryMode;
         criticality = criticality == null ? Criticality.BLOCKING : criticality;
         maxAttempts = maxAttempts <= 0 ? 1 : maxAttempts;
         timeoutMs = timeoutMs <= 0 ? 30_000 : timeoutMs;
         backoffBaseMs = backoffBaseMs <= 0 ? 1_000 : backoffBaseMs;
+    }
+
+    /** True when this node declares an exit gate, i.e. output the engine will check for. */
+    public boolean hasExitGate() {
+        return !producesArtifacts.isEmpty();
     }
 
     public String effectiveGateId() {

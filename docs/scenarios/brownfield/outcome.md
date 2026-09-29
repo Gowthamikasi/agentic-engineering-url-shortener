@@ -5,7 +5,7 @@
 
 | Field | Value |
 |---|---|
-| Run | `run_1a0ed8a1313_2` |
+| Run | `run_1a0edbd3c78_2` |
 | Terminal state | **COMPLETED** |
 | Terminal outcome | All nodes settled successfully |
 | Definition version | 1 |
@@ -46,7 +46,7 @@
 | 17 | `WorkflowSuspended` | `-` | Run parked at a human gate |
 | 18 | `ApprovalDecided` | `impact-approval` | Impact analysis is complete: no wire change, ADR-017 supersedes ADR-004, and rol |
 | 44 | `NodeFailed` | `regression` | a legacy base62 code was rejected by the narrowed validator (fault-injected) |
-| 45 | `RollbackStarted` | `regression` | Reverting artifacts of regression |
+| 46 | `RollbackStarted` | `regression` | Reverting artifacts of regression |
 | 47 | `RollbackCompleted` | `regression` | Artifacts reverted to their prior version |
 | 48 | `SafeStop` | `regression` | Rolled back and awaiting a human decision: a legacy base62 code was rejected by  |
 | 54 | `SafeStop` | `-` | One or more nodes safe-stopped |
@@ -82,7 +82,7 @@ _No replanning occurred in this run._
 | File | Contents |
 |---|---|
 | `input.md` | the requirement as submitted, and what to watch |
-| `run-run_1a0ed8a1313_2.json` | final snapshot from `GET /workflows/{id}` |
+| `run-run_1a0edbd3c78_2.json` | final snapshot from `GET /workflows/{id}` |
 | `history.json` | the transition journal, in order |
 | `audit.jsonl` | the hash-chained audit trail |
 | `graph.mmd` | Mermaid graph coloured by final node state |

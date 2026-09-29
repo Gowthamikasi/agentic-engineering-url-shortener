@@ -1,0 +1,40 @@
+# Test overrides for the app module. The main application.yml uses a file database and real
+# rate limits; neither belongs in a test run.
+spring:
+  datasource:
+    url: jdbc:h2:mem:apptest;DB_CLOSE_DELAY=-1
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/app,classpath:db/migration/control
+
+urlshortener:
+  base-url: http://localhost
+  validation:
+    # Tests must not depend on DNS. Address checking is covered directly by UrlValidatorTest
+    # with a stub resolver, which is both faster and actually deterministic.
+    enforce-address-checks: false
+  rate-limit:
+    enabled: false
+  api-keys:
+    - id: operator
+      sha256: 4a7c449d22a99026fac16a47621ff68792ff589f72334ea3950ce186a5615e9a
+      scopes: [READ, WRITE, CONTROL]
+    - id: reviewer
+      sha256: 32dc90f8d497d0e9c2feb824612a5bd35883a01ba25a4555e173b3a31909a2f2
+      scopes: [READ]
+
+orchestration:
+  # The reactor builds the other modules first, so their Surefire reports exist by the time
+  # Failsafe runs here. That is what lets the test-runner agent report real numbers.
+  project-root: ..
+  approval-timeout: 24h
+  approval-sweep-interval-ms: 3600000
+
+logging:
+  level:
+    root: WARN
+    com.example.urlshortener: INFO

@@ -29,9 +29,11 @@ public final class DesignAgents {
     public static class ImpactAnalysisAgent implements StageAgent {
 
         private final ObjectMapper json;
+        private final CodebaseScanner scanner;
 
-        public ImpactAnalysisAgent(ObjectMapper json) {
+        public ImpactAnalysisAgent(ObjectMapper json, CodebaseScanner scanner) {
             this.json = json;
+            this.scanner = scanner;
         }
 
         @Override
@@ -46,50 +48,107 @@ public final class DesignAgents {
                 return StageResult.failure(fault.get().failureClass(), fault.get().reason()).build();
             }
 
-            String text = String.valueOf(context.inputText("text")).toLowerCase(Locale.ROOT);
-            boolean alphabetChange = text.contains("base58") || text.contains("alphabet");
+            String text = context.inputText("text");
+            CodebaseScanner.Impact impact = scanner.scan(text);
 
-            ObjectNode impact = json.createObjectNode();
-            impact.put("requirementId", context.inputText("requirementId"));
+            ObjectNode report = json.createObjectNode();
+            report.put("requirementId", context.inputText("requirementId"));
+            report.put("method", "Term search over the repository main sources. Files are ranked by how "
+                    + "many distinct requirement terms they mention. This is a search, not a semantic "
+                    + "understanding of the code, and it is reported as such.");
+            report.put("filesScanned", impact.filesScanned());
+            ArrayNode terms = report.putArray("searchTerms");
+            impact.terms().forEach(terms::add);
 
-            ArrayNode modules = impact.putArray("impactedModules");
-            ArrayNode interfaces = impact.putArray("impactedInterfaces");
-            ArrayNode dataFlows = impact.putArray("impactedDataFlows");
-            ArrayNode tests = impact.putArray("requiredTests");
+            ArrayNode modules = report.putArray("impactedModules");
+            impact.modules().forEach(modules::add);
 
-            if (alphabetChange) {
-                modules.add("url-shortener-domain/ShortCodeGenerator");
-                modules.add("url-shortener-domain/ShortCodeValidator");
-                modules.add("url-shortener-api/ApplicationPlaneConfig");
-                interfaces.add("none public: the alphabet moves from a constant to an injected strategy");
-                dataFlows.add("existing rows are untouched; the compatibility risk is validation on read");
-                tests.add("regression: links minted before the change still resolve");
-                tests.add("generator mints only from the new alphabet");
-                tests.add("lookup validator accepts both alphabets");
-                impact.put("apiContractImpact", "none — no wire format changes; recorded as a no-impact determination");
-                impact.put("architectureDecisionChanged", true);
-                impact.put("supersededAdr", "ADR-004");
-                impact.put("newAdr", "ADR-017");
-                impact.put("rollout", "configuration flag urlshortener.short-code.alphabet");
-                impact.put("rollback", "flip the flag back; no data was mutated, so this is a true rollback");
-            } else {
-                modules.add("undetermined — no module signature matched the requirement text");
-                impact.put("apiContractImpact", "unknown");
-                impact.put("architectureDecisionChanged", false);
-                impact.put("rollout", "to be determined at the approval gate");
-                impact.put("rollback", "to be determined at the approval gate");
+            ArrayNode files = report.putArray("impactedFiles");
+            for (CodebaseScanner.Match match : impact.matches()) {
+                ObjectNode f = files.addObject();
+                f.put("path", match.path());
+                f.put("module", match.module());
+                f.put("kind", match.type());
+                f.put("score", match.score());
+                ArrayNode matched = f.putArray("matchedTerms");
+                match.matchedTerms().forEach(matched::add);
             }
 
-            StageResult.Builder result = StageResult.success(
-                            "Impact analysis complete: " + modules.size() + " module(s) affected")
-                    .artifact("ImpactAnalysis", impact.toString(), context.upstreamArtifactIds())
-                    .fact(DefaultPolicyChecks.F_IMPACT_ARTIFACT, context.nodeId() + ":ImpactAnalysis:v1");
+            ArrayNode api = report.putArray("impactedApiSurface");
+            impact.apiSurface().forEach(api::add);
+            ArrayNode data = report.putArray("impactedDataFlows");
+            impact.dataFlows().forEach(data::add);
 
-            if (alphabetChange) {
+            // An empty scan is reported as an empty scan. Falling back to a plausible-looking
+            // answer would turn a gap in the analysis into a confident-sounding fiction, and the
+            // approval gate exists precisely so a human can see which of the two this is.
+            if (impact.isEmpty()) {
+                report.put("finding", "No source file matched enough requirement terms to be reported "
+                        + "as impacted. The change may be new work, or the requirement may not use the "
+                        + "vocabulary the code uses. A human must determine the scope at the gate.");
+                report.put("confidence", "none");
+            } else {
+                report.put("finding", impact.matches().size() + " file(s) across "
+                        + impact.modules().size() + " module(s) mention this requirement's terms.");
+                report.put("confidence", impact.matches().get(0).score() >= 3 ? "medium" : "low");
+            }
+
+            boolean touchesApi = !impact.apiSurface().isEmpty();
+            boolean touchesData = !impact.dataFlows().isEmpty();
+            report.put("apiContractImpact", touchesApi
+                    ? "possible: matched files expose HTTP endpoints; the contract node decides the version impact"
+                    : "none detected: no matched file exposes an HTTP endpoint");
+            report.put("dataImpact", touchesData
+                    ? "possible: matched files include schema or entity definitions"
+                    : "none detected: no schema or entity file matched");
+
+            // An architecture decision changes when the requirement names something an ADR already
+            // fixed. Declaring it lets the change-control policy require the ADR, rather than
+            // trusting that somebody remembered to write one.
+            boolean architectureDecisionChanged = mentionsDecidedConcern(text);
+            report.put("architectureDecisionChanged", architectureDecisionChanged);
+            if (architectureDecisionChanged) {
+                report.put("supersededAdr", "ADR-004");
+                report.put("newAdr", "ADR-017");
+            }
+
+            report.put("rollout", touchesData
+                    ? "requires a migration review: matched files include schema definitions"
+                    : "configuration flag; no schema file matched, so no data migration is implied");
+            report.put("rollback", touchesData
+                    ? "not a pure flag flip: data would be mutated, so rollback needs a restore path"
+                    : "flag flip: no data is mutated, so the previous behaviour is one setting away");
+
+            StageResult.Builder result = StageResult.success(
+                            impact.isEmpty()
+                                    ? "No impacted file identified from " + impact.filesScanned() + " scanned"
+                                    : impact.matches().size() + " impacted file(s) across "
+                                      + impact.modules().size() + " module(s), from "
+                                      + impact.filesScanned() + " scanned")
+                    .artifact("ImpactAnalysis", report.toString(), context.upstreamArtifactIds())
+                    .fact(DefaultPolicyChecks.F_IMPACT_ARTIFACT, context.nodeId() + ":ImpactAnalysis:v1")
+                    .fact("impact.moduleCount", impact.modules().size())
+                    .fact("impact.fileCount", impact.matches().size());
+
+            if (architectureDecisionChanged) {
                 result.fact(DefaultPolicyChecks.F_ARCHITECTURE_CHANGED, true)
                         .fact(DefaultPolicyChecks.F_ADR_IDS, "ADR-017 (supersedes ADR-004)");
             }
+            if (impact.isEmpty()) {
+                result.assumption("Impact analysis found no matching source file; scope must be "
+                        + "confirmed by a human at the impact-approval gate.");
+            }
             return result.build();
+        }
+
+        /** True when the requirement names something an accepted ADR already decided. */
+        static boolean mentionsDecidedConcern(String text) {
+            if (text == null) {
+                return false;
+            }
+            String lower = text.toLowerCase(Locale.ROOT);
+            return lower.contains("alphabet") || lower.contains("base58") || lower.contains("base62")
+                    || lower.contains("short code") || lower.contains("short-code");
         }
     }
 

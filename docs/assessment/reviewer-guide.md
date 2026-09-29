@@ -18,11 +18,13 @@ If you only have five minutes, run items 1, 12 and 17.
 
 | # | Claim | Command | Expected |
 |---|---|---|---|
-| 1 | Clean clone builds and all tests pass | `./mvnw verify` | `BUILD SUCCESS`, 158 tests, 0 failures |
+| 1 | Clean clone builds and all tests pass | `./mvnw verify` | `BUILD SUCCESS`, 181 unit/contract tests plus 16 integration tests, 0 failures |
 | 2 | The two planes do not depend on each other | `./mvnw -pl app test -Dtest=ArchitectureBoundaryTest` | 7 rules pass. Break it: add an `orchestration` import to `url-shortener-api` and watch the build fail |
 | 3 | The domain has no framework coupling | `grep -rl "org.springframework\|jakarta.persistence" url-shortener-domain/src/main` | no output |
 | 4 | The workflow is data, not code | `cat orchestration-core/src/main/resources/workflows/sdlc.v1.json` | 18 nodes with dependencies, gates, timeouts, retry budgets and recovery modes |
 | 5 | The policy set is versioned and readable | `cat policies/policy-set.v1.0.0.json` | 13 rules across 5 domains, each with `mandatory` |
+| 5a | The workflow schema is enforced, not decorative | `./mvnw -pl orchestration-core test -Dtest=WorkflowDefinitionSchemaTest` | 10 tests. Add `"maxAttemps": 3` to a node and the definition is refused at load |
+| 5b | Every executing node declares an exit gate | `grep -c producesArtifacts orchestration-core/src/main/resources/workflows/sdlc.v1.json` | 15 nodes declare what they owe the run |
 
 ## Application plane
 
@@ -48,6 +50,9 @@ If you only have five minutes, run items 1, 12 and 17.
 | 18 | Retry is bounded and engine-owned | greenfield bundle, `contract-tests` | `attempts: 2` — one injected transient failure, one retry, then success. Agents cannot retry internally |
 | 19 | Rollback and resume work | brownfield `history.json` | `NodeFailed → RollbackStarted → RollbackCompleted → SafeStop → WorkflowResumed → NodeSucceeded` |
 | 20 | Replanning preserves governance | ambiguous `run-*.json` | `definitionVersion: 2`; `Invalidated` for `quality-check` and `clarify`; a `Replanned` row with the version diff |
+| 20a | **An exit gate catches a stage that produces nothing** | `./mvnw -pl orchestration-core test -Dtest=WorkflowEngineTest` | `a_node_that_reports_success_without_its_declared_artifact_fails_the_exit_gate`: the claim of success is refused because the declared artifact is absent |
+| 20b | **Brownfield impact is read from the codebase** | brownfield `artifacts.json`, `ImpactAnalysis` | names real files with scores and the terms that matched. `filesScanned` is the size of the actual scan |
+| 20c | Integration tests exercise both planes over HTTP | `./mvnw -pl app verify` | 16 tests on a real port: redirects, expiry, auth, a whole governed run, replanning, audit verification |
 | 21 | Lineage reaches the requirement | `curl -H "$K" localhost:8080/api/v1/workflows/<runId>/lineage/summary:RunSummary:v1` | a chain back to `RawRequirement`, with the decisions in force at each step |
 
 ## Governance and evidence

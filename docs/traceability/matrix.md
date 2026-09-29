@@ -9,12 +9,12 @@ and find the requirement it exists for.
 
 | ID | Requirement | Design | Code | Test | Evidence |
 |---|---|---|---|---|---|
-| REQ-C-001 | Working, runnable end-to-end prototype | ADR-014 | `app/Application` | full build | `./mvnw verify`, 158 tests |
+| REQ-C-001 | Working, runnable end-to-end prototype | ADR-014 | `app/Application` | full build | `./mvnw verify`, 197 tests |
 | REQ-C-002 | URL shortener with core APIs, analytics, reliability | arch §3 | `url-shortener-*` | `LinksApiContractTest` (24) | reviewer guide 6-11 |
 | REQ-C-003 | Interpret intent, identify ambiguity, normalise | arch §4 | `RequirementAgents` | `RequirementQualityAgentTest` (8) | `scenarios/ambiguous/` |
 | REQ-C-004 | Task decomposition with dependencies | arch §4.1 | `DesignAgents.DecomposeAgent` | `WorkflowEngineTest` | `artifacts.json` → `Decomposition` |
-| REQ-C-005 | Brownfield reasoning: modules, APIs, data flows | ADR-017 | `ImpactAnalysisAgent` | `WorkflowEngineTest` | `scenarios/brownfield/` |
-| REQ-C-006 | Explicit dependency graph with entry/exit gates | ADR-007 | `sdlc.v1.json`, `DagValidator` | `DagValidatorTest` (8) | `graph.mmd` per scenario |
+| REQ-C-005 | Brownfield reasoning: modules, APIs, data flows | ADR-017 | `CodebaseScanner`, `ImpactAnalysisAgent` | `CodebaseScannerTest` (8) | `scenarios/brownfield/` — 131 files scanned, real paths reported |
+| REQ-C-006 | Explicit dependency graph with entry/exit gates | ADR-007 | `sdlc.v1.json` (`dependsOn`/`branchCondition` = entry, `producesArtifacts` = exit), `DagValidator`, `WorkflowDefinitionSchema` | `DagValidatorTest` (8), `WorkflowDefinitionSchemaTest` (10), exit-gate tests (5) | `graph.mmd` per scenario |
 | REQ-C-007 | Sequential and parallel paths with synchronisation | arch §4.1 | `WorkflowEngine.dispatchWave` | `sibling_nodes_run_concurrently...`, `a_join_node_does_not_start_until...` | overlapping timestamps in `history.json` |
 | REQ-C-008 | Cross-stage context and decision lineage | arch §4 | `Artifact`, `StageContext`, `/lineage` | `WorkflowEngineTest` | `GET /{runId}/lineage/{artifactId}` |
 | REQ-C-009 | Human approval checkpoints | ADR-008 | `WorkflowEngine.decide`, `gate-cli` | `a_run_parks_at_a_gate...`, `a_rejection_terminates_the_run...` | `gates.json` per scenario |
@@ -23,7 +23,7 @@ and find the requirement it exists for.
 | REQ-C-012 | Audit-grade observability and traceability | ADR-012 | `AuditHasher`, `JpaAuditSink` | `AuditHasherTest` (5) | `audit.jsonl`, `X-Audit-Chain` |
 | REQ-C-013 | Success rate, retry/rollback frequency, MTTR, latency | arch §6 | `ReliabilityMetricsCalculator` | `ReliabilityMetricsCalculatorTest` (7) | `reliability-metrics.json` |
 | REQ-C-014 | Dynamic replanning preserving governance | ADR-011 | `WorkflowEngine.replan` | `a_decision_that_supersedes...`, `the_downstream_closure_is_transitive...` | `scenarios/ambiguous/` at v2 |
-| REQ-C-015 | Production-quality code, schemas, tests, docs | ADR-013 | whole repository | 158 tests | this matrix |
+| REQ-C-015 | Production-quality code, schemas, tests, docs | ADR-013 | whole repository; 5 JSON schemas under `specs/.../contracts/schemas/` | 181 unit/contract + 16 integration | this matrix |
 | REQ-C-016 | Risks, trade-offs, failure scenarios, guardrails | summary §16-18 | — | — | final summary |
 | REQ-C-017 | Controlled autonomy: agents execute, humans approve | ADR-008 | `NodeStateMachine`, `HumanGateAgent` | `an_elapsed_approval_window_safe_stops_and_never_approves` | no timer path to approval |
 | REQ-C-018 | Final engineering summary | — | — | — | `final-engineering-summary.md` |
@@ -40,7 +40,7 @@ and find the requirement it exists for.
 | REQ-D-005 | A failed mandatory policy blocks downstream progression | `PolicyEvaluator.Result.releaseBlocked`; `policy-eval` returns a node failure | `a_mandatory_failure_blocks_release_and_names_the_rule` |
 | REQ-D-006 | Exceptions record policy, reason, scope, approver, control, expiry | `PolicyException`, `PolicyExceptionController` | `an_expired_exception_is_re_evaluated_as_a_failure` |
 | REQ-D-007 | MTTR over recovered failures; unrecovered reported separately | `ReliabilityMetricsCalculator` | `mttr_averages_only_recovered_failures`, `an_unrecovered_failure_is_reported_separately...` |
-| REQ-D-008 | Versioned contract plus schemas | `openapi.v1.yaml`, `sdlc.v1.json`, `policy-set.v1.0.0.json` | `LinksApiContractTest` |
+| REQ-D-008 | Versioned contract plus schemas | `openapi.v1.yaml`; `workflow-definition`, `workflow-state`, `audit-event`, `policy-evaluation`, `approval-decision` schemas | `LinksApiContractTest`, `WorkflowDefinitionSchemaTest` |
 | REQ-D-009 | A clear requirement proceeds without an artificial gate | `RequirementQualityAgent` | `a_well_specified_greenfield_requirement_proceeds_without_a_clarification_gate` |
 | REQ-D-010 | Lack of response is never approval | `expireApprovals`, `NodeStateMachine` | `an_elapsed_approval_window_safe_stops_and_never_approves` |
 | REQ-D-012 | Release decision is exactly one of three values | release gate decisions | `WorkflowEngineTest` |
@@ -70,6 +70,11 @@ and find the requirement it exists for.
 | EXC-002 | User accounts, OAuth, multi-tenancy | ADR-015, summary §19.5 |
 | EXC-003 | Custom vanity aliases | not implemented |
 | EXC-004 | LLM-driven code generation inside the engine | ADR-005, summary §19.1-19.2 |
+
+## Assignment clause map
+
+A clause-by-clause reading of the assignment text lives in
+[requirements-coverage.md](../assessment/requirements-coverage.md), including the gaps.
 
 ## Orphan check
 

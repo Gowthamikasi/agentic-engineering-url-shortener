@@ -23,6 +23,8 @@ public final class AuditActions {
     public static final String NODE_SKIPPED = "NodeSkipped";
     public static final String NODE_BLOCKED = "NodeBlocked";
     public static final String NODE_RETRY_SCHEDULED = "NodeRetryScheduled";
+    /** A node claimed success without producing the output its definition declares. */
+    public static final String EXIT_GATE_FAILED = "ExitGateFailed";
 
     public static final String APPROVAL_REQUESTED = "ApprovalRequested";
     public static final String APPROVAL_DECIDED = "ApprovalDecided";

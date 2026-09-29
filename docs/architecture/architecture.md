@@ -116,9 +116,21 @@ lesser harm.
 
 ## 4. Control plane
 
-### 4.1 The scheduling rule
+### 4.1 Entry and exit gates
 
-Everything the engine does follows from one sentence:
+Every node declares both.
+
+Its **entry gate** is `dependsOn` plus `joinType` plus an optional `branchCondition`: the conditions
+under which it may start. Its **exit gate** is `producesArtifacts`: what must exist before it may be
+called successful. An agent reporting success is a claim; the declared artifact is the evidence.
+Accepting the claim without the evidence is how a stage silently produces nothing and every
+downstream node works from a gap that nothing reported — so a node that returns success without its
+declared output is recorded as `ExitGateFailed` and treated as a permanent failure. It is not
+retried, because repeating it would reproduce the same gap.
+
+### 4.2 The scheduling rule
+
+Everything else the engine does follows from one sentence:
 
 > A node runs when every dependency it declared is satisfied, its branch condition holds, and
 > nothing upstream of it has blocked.
@@ -145,7 +157,7 @@ ingest → normalize → quality-check ─┬─▶ clarify 🛑 (only if ambigu
 
 The definition is [`sdlc.v1.json`](../../orchestration-core/src/main/resources/workflows/sdlc.v1.json).
 
-### 4.2 The node state machine
+### 4.3 The node state machine
 
 `NodeStateMachine` holds one `EnumMap` of permitted transitions. Anything not in it throws.
 
@@ -163,7 +175,7 @@ scattered checks — they are enforced by the **absence of an edge**:
 A future change that wants one of these has to add it to the table, in the open, where
 `NodeStateMachineTest` will see it.
 
-### 4.3 Reliability
+### 4.4 Reliability
 
 | Concern | Design |
 |---|---|
@@ -179,7 +191,7 @@ Failing safe on unknown causes is deliberate: misclassifying a transient fault a
 one human decision, while the reverse burns the retry budget repeating something that cannot
 succeed, and repeats any side effect along with it.
 
-### 4.4 Human gates
+### 4.5 Human gates
 
 | Gate | Armed when | Outcomes |
 |---|---|---|
@@ -194,7 +206,7 @@ the decision that justified it. `actor` and `rationale` are both required and re
 elapsed time into consent, and `an_elapsed_approval_window_safe_stops_and_never_approves` asserts
 it against the real engine.
 
-### 4.5 Replanning
+### 4.6 Replanning
 
 When a gate declares `supersedes`, its approval invalidates the transitive downstream closure of
 that node, increments the definition version, and re-runs the affected nodes. Work that did not
@@ -256,10 +268,11 @@ Every response carries `"dataClass": "DEMONSTRATION"`.
 | `url-shortener-api` | 24 | full API contract, idempotency, auth scopes, expiry, health |
 | `telemetry` | 12 | MTTR including the unrecovered mix, hash-chain tamper detection |
 | `policy-core` | 18 | outcomes, mandatory blocking, exception expiry, the shipped rule set |
-| `orchestration-core` | 44 | DAG validation, prohibited transitions, parallelism, joins, retry bounds, timeout, fallback, rollback vs compensation, gates, replanning |
-| `orchestration-agents` | 8 | the clarification decision against all three scenario texts |
+| `orchestration-core` | 59 | schema and DAG validation, prohibited transitions, entry and exit gates, parallelism, joins, retry bounds, timeout, fallback, rollback vs compensation, replanning |
+| `orchestration-agents` | 16 | the clarification decision against all three scenario texts; codebase scanning for brownfield impact |
 | `app` | 7 | ArchUnit module boundaries |
-| **Total** | **158** | |
+| `app` (integration) | 16 | both planes end to end over real HTTP on a real port |
+| **Total** | **197** | |
 
 ---
 
