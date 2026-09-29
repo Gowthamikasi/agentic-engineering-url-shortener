@@ -9,7 +9,7 @@ and find the requirement it exists for.
 
 | ID | Requirement | Design | Code | Test | Evidence |
 |---|---|---|---|---|---|
-| REQ-C-001 | Working, runnable end-to-end prototype | ADR-014 | `app/Application` | full build | `./mvnw verify`, 157 tests |
+| REQ-C-001 | Working, runnable end-to-end prototype | ADR-014 | `app/Application` | full build | `./mvnw verify`, 158 tests |
 | REQ-C-002 | URL shortener with core APIs, analytics, reliability | arch §3 | `url-shortener-*` | `LinksApiContractTest` (24) | reviewer guide 6-11 |
 | REQ-C-003 | Interpret intent, identify ambiguity, normalise | arch §4 | `RequirementAgents` | `RequirementQualityAgentTest` (8) | `scenarios/ambiguous/` |
 | REQ-C-004 | Task decomposition with dependencies | arch §4.1 | `DesignAgents.DecomposeAgent` | `WorkflowEngineTest` | `artifacts.json` → `Decomposition` |
@@ -23,7 +23,7 @@ and find the requirement it exists for.
 | REQ-C-012 | Audit-grade observability and traceability | ADR-012 | `AuditHasher`, `JpaAuditSink` | `AuditHasherTest` (5) | `audit.jsonl`, `X-Audit-Chain` |
 | REQ-C-013 | Success rate, retry/rollback frequency, MTTR, latency | arch §6 | `ReliabilityMetricsCalculator` | `ReliabilityMetricsCalculatorTest` (7) | `reliability-metrics.json` |
 | REQ-C-014 | Dynamic replanning preserving governance | ADR-011 | `WorkflowEngine.replan` | `a_decision_that_supersedes...`, `the_downstream_closure_is_transitive...` | `scenarios/ambiguous/` at v2 |
-| REQ-C-015 | Production-quality code, schemas, tests, docs | ADR-013 | whole repository | 157 tests | this matrix |
+| REQ-C-015 | Production-quality code, schemas, tests, docs | ADR-013 | whole repository | 158 tests | this matrix |
 | REQ-C-016 | Risks, trade-offs, failure scenarios, guardrails | summary §16-18 | — | — | final summary |
 | REQ-C-017 | Controlled autonomy: agents execute, humans approve | ADR-008 | `NodeStateMachine`, `HumanGateAgent` | `an_elapsed_approval_window_safe_stops_and_never_approves` | no timer path to approval |
 | REQ-C-018 | Final engineering summary | — | — | — | `final-engineering-summary.md` |

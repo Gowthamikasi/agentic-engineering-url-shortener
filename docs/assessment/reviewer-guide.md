@@ -18,7 +18,7 @@ If you only have five minutes, run items 1, 12 and 17.
 
 | # | Claim | Command | Expected |
 |---|---|---|---|
-| 1 | Clean clone builds and all tests pass | `./mvnw verify` | `BUILD SUCCESS`, 157 tests, 0 failures |
+| 1 | Clean clone builds and all tests pass | `./mvnw verify` | `BUILD SUCCESS`, 158 tests, 0 failures |
 | 2 | The two planes do not depend on each other | `./mvnw -pl app test -Dtest=ArchitectureBoundaryTest` | 7 rules pass. Break it: add an `orchestration` import to `url-shortener-api` and watch the build fail |
 | 3 | The domain has no framework coupling | `grep -rl "org.springframework\|jakarta.persistence" url-shortener-domain/src/main` | no output |
 | 4 | The workflow is data, not code | `cat orchestration-core/src/main/resources/workflows/sdlc.v1.json` | 18 nodes with dependencies, gates, timeouts, retry budgets and recovery modes |

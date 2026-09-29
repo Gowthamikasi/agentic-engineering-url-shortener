@@ -5,7 +5,7 @@
 | Deliverable | Agentic Software Engineering System — URL Shortener |
 | Date | 2026-09-29 |
 | Release decision | **READY WITH ACCEPTED LIMITATIONS** (§21) |
-| Tests | 157, all passing |
+| Tests | 158, all passing |
 | Scenarios executed | 3 of 3, all `COMPLETED` |
 
 Everything reported here was produced by executing the system. Where something was not executed,
@@ -31,7 +31,7 @@ Two planes in one process, sharing nothing above the database:
   rollback and compensation, safe stop, resume, dynamic replanning, versioned policy guardrails, a
   hash-chained audit trail, and reliability metrics including MTTR.
 
-Twelve Maven modules, 157 tests, no runtime dependencies.
+Twelve Maven modules, 158 tests, no runtime dependencies.
 
 ## 3. Requirement interpretation
 
@@ -146,7 +146,7 @@ none. Outcome `COMPLETED` at v2, 65 audit rows.
 
 ## 13. Testing approach
 
-157 tests, no Docker, about two minutes. Unit tests for the domain; `@DataJpaTest` slices for
+158 tests, no Docker, about two minutes. Unit tests for the domain; `@DataJpaTest` slices for
 persistence including a concurrent-collision test; `MockMvc` contract tests for the full API;
 behavioural tests for the engine; ArchUnit for the module boundaries.
 
@@ -156,11 +156,11 @@ do is the governance claim.
 ## 14. Executed results
 
 ```
-url-shortener-domain           37    orchestration-core             43
+url-shortener-domain           37    orchestration-core             44
 url-shortener-infrastructure    8    orchestration-agents            8
 url-shortener-api              24    app (ArchUnit)                  7
 telemetry                      12    ─────────────────────────────────
-policy-core                    18    TOTAL                         157
+policy-core                    18    TOTAL                         158
 ```
 
 All passing. Reproduce with `./mvnw verify`.
@@ -277,7 +277,7 @@ Included because a summary with no failures in it is not a summary of real work:
 
 **READY WITH ACCEPTED LIMITATIONS.**
 
-Ready because: the prototype builds and runs from a clean clone with only a JDK; 157 tests pass;
+Ready because: the prototype builds and runs from a clean clone with only a JDK; 158 tests pass;
 all three scenarios executed end to end and are materially different; every governance guarantee
 claimed is enforced by the state machine and covered by a negative test; all mandatory policies pass
 on every run; and the evidence is captured output rather than written examples.

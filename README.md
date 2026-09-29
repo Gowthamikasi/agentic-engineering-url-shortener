@@ -11,7 +11,7 @@ every state change journalled.
 | | |
 |---|---|
 | Stack | Java 21 · Spring Boot 3.3 · Maven multi-module · H2 (file) + Spring Data JPA + Flyway · JUnit 5 |
-| Tests | 157 across 8 modules, all passing |
+| Tests | 158 across 8 modules, all passing |
 | Runtime dependencies | none — one JVM, one database file |
 
 ---
@@ -21,7 +21,7 @@ every state change journalled.
 Prerequisite: **JDK 21**. Nothing else — no Docker, no database to install, no network at runtime.
 
 ```bash
-./mvnw verify                                    # build and run all 157 tests
+./mvnw verify                                    # build and run all 158 tests
 java -jar app/target/agentic-url-shortener.jar   # starts on http://localhost:8080
 ```
 

@@ -256,10 +256,10 @@ Every response carries `"dataClass": "DEMONSTRATION"`.
 | `url-shortener-api` | 24 | full API contract, idempotency, auth scopes, expiry, health |
 | `telemetry` | 12 | MTTR including the unrecovered mix, hash-chain tamper detection |
 | `policy-core` | 18 | outcomes, mandatory blocking, exception expiry, the shipped rule set |
-| `orchestration-core` | 43 | DAG validation, prohibited transitions, parallelism, joins, retry bounds, timeout, fallback, rollback vs compensation, gates, replanning |
+| `orchestration-core` | 44 | DAG validation, prohibited transitions, parallelism, joins, retry bounds, timeout, fallback, rollback vs compensation, gates, replanning |
 | `orchestration-agents` | 8 | the clarification decision against all three scenario texts |
 | `app` | 7 | ArchUnit module boundaries |
-| **Total** | **157** | |
+| **Total** | **158** | |
 
 ---
 

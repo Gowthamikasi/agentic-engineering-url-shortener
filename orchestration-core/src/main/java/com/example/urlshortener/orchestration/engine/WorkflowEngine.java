@@ -579,9 +579,8 @@ public class WorkflowEngine implements AutoCloseable {
 
     private StageContext contextFor(WorkflowInstance instance, NodeDefinition node, int attempt) {
         List<Artifact> upstream = new ArrayList<>();
-        for (String dependencyId : node.dependsOn()) {
-            instance.node(dependencyId).artifactIds()
-                    .forEach(id -> instance.artifact(id).ifPresent(upstream::add));
+        for (String artifactId : upstreamArtifactIdsOf(instance, node)) {
+            instance.artifact(artifactId).ifPresent(upstream::add);
         }
         return new StageContext(instance.runId(), node.id(), attempt, instance.definitionVersion(),
                 instance.policyVersion(), instance.input(), upstream, instance.decisions(),
@@ -875,10 +874,35 @@ public class WorkflowEngine implements AutoCloseable {
         return instance;
     }
 
+    /**
+     * Artifacts reaching this node, looking through dependencies that produced none.
+     *
+     * <p>A gate produces no artifact, and a skipped node produces none either. Stopping at the
+     * direct dependencies would mean a gate severs provenance: everything downstream of a release
+     * gate would have an empty input list and its lineage would end one step from where it started.
+     * So an artifact-less dependency is looked through to its own dependencies, and provenance
+     * survives the gate.
+     */
     private static List<String> upstreamArtifactIdsOf(WorkflowInstance instance, NodeDefinition node) {
         List<String> ids = new ArrayList<>();
-        node.dependsOn().forEach(dep -> ids.addAll(instance.node(dep).artifactIds()));
+        collectUpstreamArtifacts(instance, node.dependsOn(), new HashSet<>(), ids);
         return ids;
+    }
+
+    private static void collectUpstreamArtifacts(WorkflowInstance instance, List<String> dependencyIds,
+                                                 Set<String> visited, List<String> collected) {
+        for (String dependencyId : dependencyIds) {
+            if (!visited.add(dependencyId)) {
+                continue;
+            }
+            List<String> artifacts = instance.node(dependencyId).artifactIds();
+            if (!artifacts.isEmpty()) {
+                collected.addAll(artifacts);
+                continue;
+            }
+            instance.definition().node(dependencyId).ifPresent(upstream ->
+                    collectUpstreamArtifacts(instance, upstream.dependsOn(), visited, collected));
+        }
     }
 
     private static String actorOf(Map<String, Object> input) {

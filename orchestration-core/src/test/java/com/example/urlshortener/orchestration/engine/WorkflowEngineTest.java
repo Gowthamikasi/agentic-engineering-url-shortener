@@ -1,5 +1,6 @@
 package com.example.urlshortener.orchestration.engine;
 
+import com.example.urlshortener.orchestration.model.Artifact;
 import com.example.urlshortener.orchestration.model.Criticality;
 import com.example.urlshortener.orchestration.model.FailureClass;
 import com.example.urlshortener.orchestration.model.InstanceState;
@@ -500,6 +501,34 @@ class WorkflowEngineTest {
         assertThat(WorkflowEngine.downstreamClosure(definition, "a")).containsExactly("b", "c");
         assertThat(WorkflowEngine.downstreamClosure(definition, "b")).containsExactly("c");
         assertThat(WorkflowEngine.downstreamClosure(definition, "unrelated")).isEmpty();
+    }
+
+    /**
+     * A gate produces no artifact. If lineage stopped at the direct dependencies, everything after
+     * a release gate would have an empty provenance chain and the audit story would end one step
+     * from where it started.
+     */
+    @Test
+    void provenance_survives_a_gate_that_produces_no_artifact() {
+        TestAgents.RecordingAgent agent = new TestAgents.RecordingAgent("TestAgent");
+        WorkflowEngine engine = engineWith(List.of(agent, new NoopGateAgent()));
+
+        WorkflowInstance instance = engine.start(definition(
+                node("produce", "TestAgent", List.of()),
+                gate("release-gate", List.of("produce"), null),
+                node("summary", "TestAgent", List.of("release-gate"))), input(), "1.0.0");
+        engine.awaitQuiescence(instance.runId(), 10_000);
+
+        engine.decide(instance.runId(), "release-gate", "READY", "madhu",
+                "Everything upstream is in order and the limitations are accepted.", null);
+        assertThat(engine.awaitQuiescence(instance.runId(), 10_000)).isTrue();
+
+        String summaryArtifactId = instance.node("summary").artifactIds().get(0);
+        Artifact summary = instance.artifact(summaryArtifactId).orElseThrow();
+
+        assertThat(summary.inputArtifactIds())
+                .as("the summary must trace back through the gate to what 'produce' made")
+                .containsExactlyElementsOf(instance.node("produce").artifactIds());
     }
 
     // ---------------------------------------------------------------- misc
